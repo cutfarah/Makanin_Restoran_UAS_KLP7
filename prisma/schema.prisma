@@ -1,0 +1,297 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================
+// ENUM
+// =====================================
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderType {
+  DINE_IN
+  DELIVERY
+}
+
+enum OrderStatus {
+  PENDING_CONFIRMATION
+  PROCESSING
+  PREPARING
+  OUT_FOR_DELIVERY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  QRIS
+  CARD
+  BANK_TRANSFER
+  GOPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DiscountType {
+  FIXED
+  PERCENTAGE
+}
+
+// =====================================
+// USER
+// =====================================
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  address      String?
+  passwordHash String?
+  googleId     String?  @unique
+  role         UserRole @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+
+  orders              Order[]
+  reviews             Review[]
+  passwordResetTokens PasswordResetToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// PASSWORD RESET
+// =====================================
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+// =====================================
+// CATEGORY
+// =====================================
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String?
+
+  foods Food[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// FOOD
+// =====================================
+
+model Food {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  price       Int
+  stock       Int     @default(20)
+  imageUrl    String?
+  isAvailable Boolean @default(true)
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  orderItems OrderItem[]
+  reviews    Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+}
+
+// =====================================
+// ORDER
+// =====================================
+
+model Order {
+  id        String      @id @default(cuid())
+  orderCode String      @unique
+  orderType OrderType
+  status    OrderStatus @default(PENDING_CONFIRMATION)
+
+  // Data pelanggan
+  customerId    String
+  customerName  String
+  customerPhone String
+  customerEmail String
+
+  // Data penerima
+  recipientName  String?
+  recipientPhone String?
+
+  // Alamat dan Maps
+  deliveryAddress   String?
+  deliveryLatitude  Float?
+  deliveryLongitude Float?
+
+  // Dine-in
+  tableNumber String?
+
+  // Catatan pesanan
+  notesForKitchen String?
+  notesForCourier String?
+
+  // Perhitungan harga
+  subtotal       Int
+  deliveryFee    Int @default(0)
+  discountAmount Int @default(0)
+  total          Int
+
+  // Kurir internal
+  courierName  String?
+  courierPhone String?
+
+  // Voucher
+  voucherId Int?
+  voucher   Voucher? @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+
+  // Relasi pelanggan
+  customer User @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  // Relasi lainnya
+  items   OrderItem[]
+  payment Payment?
+  reviews Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+}
+
+// =====================================
+// ORDER ITEM
+// =====================================
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  foodId  Int?
+
+  foodName  String
+  unitPrice Int
+  quantity  Int
+  lineTotal Int
+  imageUrl  String?
+
+  // Catatan khusus makanan
+  notes String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  food Food? @relation(fields: [foodId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+// =====================================
+// PAYMENT
+// =====================================
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  amount          Int
+  referenceNumber String?
+  paidAt          DateTime?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================
+// REVIEW
+// =====================================
+
+model Review {
+  id      String @id @default(cuid())
+  userId  String
+  foodId  Int
+  orderId String
+
+  rating  Int
+  comment String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  food Food @relation(fields: [foodId], references: [id], onDelete: Restrict)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Satu makanan hanya bisa diulas sekali per pesanan
+  @@unique([orderId, foodId])
+  @@index([foodId])
+}
+
+// =====================================
+// VOUCHER
+// =====================================
+
+model Voucher {
+  id            Int          @id @default(autoincrement())
+  code          String       @unique
+  description   String?
+  discountType  DiscountType
+  discountValue Int
+
+  minimumPurchase Int  @default(0)
+  maximumDiscount Int?
+
+  startsAt  DateTime
+  expiresAt DateTime
+
+  usageLimit Int?
+  usedCount  Int     @default(0)
+  isActive   Boolean @default(true)
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
