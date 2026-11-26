@@ -8,8 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^18.0.10",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.3"
   }
 }
