@@ -82,8 +82,51 @@ const getFoods = () => {
 }
 const setFoods = list => { localStorage.setItem('makanin_foods',JSON.stringify(list)); localStorage.setItem('makanin_foods_seeded','true') }
 
-const currentUser = () => { const v=readStore('makanin_current_user',null); return v && typeof v==='object' ? v : null }
-const logoutUser = () => { localStorage.removeItem('makanin_current_user'); location.href='index.html' }
+let sessionUser = null;
+
+async function loadCurrentUser() {
+  try {
+    const response = await fetch('/api/auth/me', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      sessionUser = null;
+      return null;
+    }
+
+    sessionUser = result.data || null;
+    return sessionUser;
+
+  } catch (error) {
+    console.error('Gagal memeriksa session:', error);
+    sessionUser = null;
+    return null;
+  }
+}
+
+const currentUser = () => sessionUser;
+
+const logoutUser = async () => {
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin'
+    });
+
+  } catch (error) {
+    console.error('Logout gagal:', error);
+
+  } finally {
+    sessionUser = null;
+    localStorage.removeItem('makanin_current_user');
+    location.href = 'index.html';
+  }
+};
 
 function updateCartCount(){document.querySelectorAll('[data-cart-count]').forEach(el=>el.textContent=getCart().reduce((s,x)=>s+x.qty,0))}
 
@@ -221,136 +264,416 @@ function detailPage(){
  updateCartCount()
 }
 function registerPage(){
- document.querySelector('#app').innerHTML=`${nav()}<main class="auth-wrap"><div class="auth-panel"><div class="auth-copy"><span class="eyebrow">Selamat datang di Makanin</span><h1>Make your next meal a little easier.</h1><p>Buat akun customer untuk menyimpan data dan melihat riwayat pesanan.</p></div><div class="form-card"><div class="form-brand">Makanin</div><h2>Daftar Akun</h2><p class="form-muted">Lengkapi data kamu untuk mulai memesan.</p><form id="registerForm"><label>Nama lengkap<input id="name" required placeholder="Nama lengkap"></label><label>No. HP<input id="phone" required placeholder="08xxxxxxxxxx"></label><label>Alamat<textarea id="address" required rows="3" placeholder="Alamat lengkap"></textarea></label><label>Email<input id="email" type="email" required placeholder="nama@email.com"></label><label>Kata sandi<input id="password" type="password" minlength="8" required placeholder="Minimal 8 karakter"></label><label>Konfirmasi kata sandi<input id="passwordConfirm" type="password" minlength="8" required placeholder="Ulangi kata sandi"></label><button class="btn primary full">Daftar Akun</button></form><p class="switch">Sudah punya akun? <a href="login.html">Masuk</a></p><div id="formMsg"></div></div></div></main>${footer()}`
- document.querySelector('#registerForm').onsubmit=e=>{
+ document.querySelector('#app').innerHTML=`${nav()}<main class="auth-wrap"><div class="auth-panel"><div class="auth-copy"><span class="eyebrow">Selamat datang di Makanin</span><h1>Make your next meal a little easier.</h1><p>Buat akun customer untuk menyimpan data dan melihat riwayat pesanan.</p></div><div class="form-card"><div class="form-brand">Makanin</div><h2>Daftar Akun</h2><p class="form-muted">Lengkapi data kamu untuk mulai memesan.</p><form id="registerForm"><label>Nama lengkap<input id="name" required placeholder="Nama lengkap"></label><label>No. HP<input id="phone" required placeholder="08xxxxxxxxxx"></label><label>Alamat<textarea id="address" required rows="3" placeholder="Alamat lengkap"></textarea></label><label>Email<input id="email" type="email" required placeholder="nama@email.com"></label><label>Kata sandi<input id="password" type="password" minlength="8" required placeholder="Minimal 8 karakter"></label><label>Konfirmasi kata sandi<input id="passwordConfirm" type="password" minlength="8" required placeholder="Ulangi kata sandi"></label><button class="btn primary full" type="submit">Daftar Akun</button></form><p class="switch">Sudah punya akun? <a href="login.html">Masuk</a></p><div id="formMsg"></div></div></div></main>${footer()}`
+
+ document.querySelector('#registerForm').onsubmit=async e=>{
   e.preventDefault()
-  const emailEl=document.querySelector('#email'),passEl=document.querySelector('#password')
+
   const name=document.querySelector('#name').value.trim()
-const phone=document.querySelector('#phone').value.trim()
-const address=document.querySelector('#address').value.trim()
-const email=emailEl.value.trim().toLowerCase()
-const pass=passEl.value
+  const phone=document.querySelector('#phone').value.trim()
+  const address=document.querySelector('#address').value.trim()
+  const email=document.querySelector('#email').value.trim().toLowerCase()
+  const password=document.querySelector('#password').value
+  const passwordConfirm=document.querySelector('#passwordConfirm').value
 
-if(!name){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Nama lengkap wajib diisi.</div>'
- return
-}
+  const msg=document.querySelector('#formMsg')
+  const button=document.querySelector('#registerForm button')
 
-if(!phone){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Nomor HP wajib diisi.</div>'
- return
-}
+  if(!name){
+   msg.innerHTML='<div class="message error">Nama lengkap wajib diisi.</div>'
+   return
+  }
 
-if(!/^[0-9]{10,13}$/.test(phone)){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Nomor HP harus 10–13 digit.</div>'
- return
-}
+  if(!/^[0-9]{10,13}$/.test(phone)){
+   msg.innerHTML='<div class="message error">Nomor HP harus 10–13 digit.</div>'
+   return
+  }
 
-if(!address){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Alamat wajib diisi.</div>'
- return
-}
+  if(!address){
+   msg.innerHTML='<div class="message error">Alamat wajib diisi.</div>'
+   return
+  }
 
-if(!email){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Email wajib diisi.</div>'
- return
-}
+  if(!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(email)){
+   msg.innerHTML='<div class="message error">Format email tidak valid.</div>'
+   return
+  }
 
-if(!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(email)){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Format email tidak valid. Contoh: nama@email.com</div>'
- return
-}
+  if(password.length<8){
+   msg.innerHTML='<div class="message error">Kata sandi minimal 8 karakter.</div>'
+   return
+  }
 
-if(pass.length<8){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Kata sandi minimal 8 karakter.</div>'
- return
-}
+  if(password!==passwordConfirm){
+   msg.innerHTML='<div class="message error">Konfirmasi kata sandi tidak cocok.</div>'
+   return
+  }
 
-if(pass!==document.querySelector('#passwordConfirm').value){
- document.querySelector('#formMsg').innerHTML='<div class="message error">Konfirmasi kata sandi tidak cocok.</div>'
- return
-}
+  button.disabled=true
 
-const users=getUsers()
-  if(users.some(u=>u.email===email)){document.querySelector('#formMsg').innerHTML='<div class="message error">Email sudah terdaftar.</div>';return}
-const u={
- id:Date.now(),
- name,
- phone,
- address,
- email,
- password:pass
-}
-  users.push(u);localStorage.setItem('makanin_users',JSON.stringify(users));localStorage.removeItem('makanin_current_user');localStorage.setItem('makanin_last_register_email',email);location.href='login.html'
+  try{
+   const response=await fetch('/api/auth/register',{
+    method:'POST',
+    headers:{
+     'Content-Type':'application/json'
+    },
+    credentials:'same-origin',
+    body:JSON.stringify({
+     name,
+     email,
+     password,
+     phone,
+     address
+    })
+   })
+
+   const result=await response.json()
+
+   if(!response.ok || !result.success){
+    throw new Error(result.message || 'Registrasi gagal.')
+   }
+
+   localStorage.setItem('makanin_last_register_email',email)
+
+   msg.innerHTML='<div class="message success">Registrasi berhasil. Silakan login.</div>'
+
+   setTimeout(()=>{
+    location.href='login.html'
+   },1000)
+
+  }catch(error){
+   msg.innerHTML=`<div class="message error">${escapeHtml(error.message)}</div>`
+  }finally{
+   button.disabled=false
+  }
  }
 }
 
 function loginPage(){
  const rememberedEmail=escapeHtml(localStorage.getItem('makanin_last_register_email')||'')
- document.querySelector('#app').innerHTML=`${nav()}<main class="auth-wrap"><div class="auth-panel single"><div class="form-card"><div class="form-brand">Makanin</div><h2>Selamat datang kembali</h2><p class="form-muted">Masuk untuk melihat pesanan dan melanjutkan pemesanan.</p><form id="loginForm"><label>Email<input id="loginEmail" type="email" value="${rememberedEmail}" required placeholder="nama@email.com"></label><label>Kata sandi<input id="loginPassword" type="password" minlength="8" required placeholder="Minimal 8 karakter"></label><button class="btn primary full">Masuk</button></form><div id="formMsg"></div><p class="switch">Belum punya akun? <a href="register.html">Daftar sekarang</a></p></div></div></main>${footer()}`
- document.querySelector('#loginForm').onsubmit=e=>{
+
+ document.querySelector('#app').innerHTML=`${nav()}<main class="auth-wrap"><div class="auth-panel single"><div class="form-card"><div class="form-brand">Makanin</div><h2>Selamat datang kembali</h2><p class="form-muted">Masuk untuk melihat pesanan dan melanjutkan pemesanan.</p><form id="loginForm"><label>Email<input id="loginEmail" type="email" value="${rememberedEmail}" required placeholder="nama@email.com"></label><label>Kata sandi<input id="loginPassword" type="password" minlength="8" required placeholder="Minimal 8 karakter"></label><button class="btn primary full" type="submit">Masuk</button></form><div id="formMsg"></div><p class="switch">Belum punya akun? <a href="register.html">Daftar sekarang</a></p></div></div></main>${footer()}`
+
+ document.querySelector('#loginForm').onsubmit=async e=>{
   e.preventDefault()
-  const email=document.querySelector('#loginEmail').value.trim().toLowerCase(),pass=document.querySelector('#loginPassword').value
-  const u=getUsers().find(x=>x.email===email&&x.password===pass)
-  document.querySelector('#formMsg').innerHTML=u?'':'<div class="message error">Email atau kata sandi salah.</div>'
-  if(u){localStorage.setItem('makanin_current_user',JSON.stringify(u));localStorage.removeItem('makanin_last_register_email');location.href='menu.html'}
+
+  const email=document.querySelector('#loginEmail').value.trim().toLowerCase()
+  const password=document.querySelector('#loginPassword').value
+
+  const msg=document.querySelector('#formMsg')
+  const button=document.querySelector('#loginForm button')
+
+  button.disabled=true
+
+  try{
+   const response=await fetch('/api/auth/login',{
+    method:'POST',
+    headers:{
+     'Content-Type':'application/json'
+    },
+    credentials:'same-origin',
+    body:JSON.stringify({
+     email,
+     password
+    })
+   })
+
+   const result=await response.json()
+
+   if(!response.ok || !result.success){
+    throw new Error(result.message || 'Email atau kata sandi salah.')
+   }
+
+   if(result.data){
+    localStorage.setItem('makanin_current_user',JSON.stringify(result.data))
+   }
+
+   localStorage.removeItem('makanin_last_register_email')
+
+   msg.innerHTML='<div class="message success">Login berhasil. Selamat datang di Makanin!</div>'
+
+   setTimeout(()=>{
+    location.href='menu.html'
+   },800)
+
+  }catch(error){
+   msg.innerHTML=`<div class="message error">${escapeHtml(error.message)}</div>`
+  }finally{
+   button.disabled=false
+  }
  }
 }
 
 function adminMasukPage(){
- document.querySelector('#app').innerHTML=`<main class="admin-login"><div class="admin-login-card"><div class="form-brand">Makanin <small>ADMIN</small></div><h1>Dashboard Restoran</h1><p>Masuk menggunakan email admin untuk mengelola pesanan, pelanggan, menu, pembayaran, dan status pesanan.</p><form id="adminForm"><label>Email Admin<input id="adminEmail" type="email" required value="admin@makanin.id" placeholder="admin@makanin.id"></label><label>Kata sandi<input id="adminPass" type="password" minlength="8" required placeholder="Minimal 8 karakter"></label><button class="btn primary full">Masuk ke Dashboard</button></form><div class="demo">Akun demo · admin@makanin.id / admin1234</div><a class="back-link" href="index.html">Kembali ke Makanin</a></div></main>`
-document.querySelector('#adminForm').onsubmit=e=>{
+
+ document.querySelector('#app').innerHTML=`
+ <main class="admin-login">
+  <div class="admin-login-card">
+
+   <div class="form-brand">
+    Makanin <small>ADMIN</small>
+   </div>
+
+   <h1>Dashboard Restoran</h1>
+
+   <p>
+    Masuk menggunakan akun administrator untuk mengelola
+    pesanan, pelanggan, menu, pembayaran, dan status pesanan.
+   </p>
+
+   <form id="adminForm">
+
+    <label>
+     Email Admin
+     <input
+      id="adminEmail"
+      type="email"
+      required
+      value="admin@makanin.id"
+      placeholder="admin@makanin.id"
+     >
+    </label>
+
+    <label>
+     Kata sandi
+     <input
+      id="adminPass"
+      type="password"
+      minlength="8"
+      required
+      placeholder="Masukkan kata sandi"
+     >
+    </label>
+
+    <button class="btn primary full" type="submit">
+     Masuk ke Dashboard
+    </button>
+
+   </form>
+
+   <div class="demo" id="adminLoginMsg">
+    Gunakan akun ADMIN yang terdaftar di database.
+   </div>
+
+   <a class="back-link" href="index.html">
+    Kembali ke Makanin
+   </a>
+
+  </div>
+ </main>
+ `
+
+ document.querySelector('#adminForm').onsubmit=async e=>{
+
   e.preventDefault()
 
   const email=document.querySelector('#adminEmail').value.trim().toLowerCase()
-  const pass=document.querySelector('#adminPass').value
-  const demo=document.querySelector('.demo')
+  const password=document.querySelector('#adminPass').value
 
-  if(!email){
-    demo.innerHTML='<span style="color:#b44">Email admin wajib diisi.</span>'
-    return
-  }
+  const msg=document.querySelector('#adminLoginMsg')
+  const button=document.querySelector('#adminForm button')
 
-  if(!pass){
-    demo.innerHTML='<span style="color:#b44">Kata sandi wajib diisi.</span>'
-    return
-  }
+  button.disabled=true
+  msg.textContent='Memeriksa akun administrator...'
 
-  if(pass.length<8){
-    demo.innerHTML='<span style="color:#b44">Kata sandi minimal 8 karakter.</span>'
-    return
-  }
+  try{
 
-  if(email==='admin@makanin.id'&&pass==='admin1234'){
-    localStorage.setItem('makanin_admin','true')
-    location.href='admin.html#dashboard'
-  }else{
-    demo.innerHTML='<span style="color:#b44">Email atau kata sandi admin salah.</span>'
+   const response=await fetch('/api/auth/login',{
+    method:'POST',
+    headers:{
+     'Content-Type':'application/json'
+    },
+    credentials:'same-origin',
+    body:JSON.stringify({
+     email,
+     password
+    })
+   })
+
+   const result=await response.json()
+
+   if(!response.ok || !result.success){
+    throw new Error(result.message || 'Login gagal.')
+   }
+
+   // Periksa role pengguna dari database
+   if(result.data.role!=='ADMIN'){
+
+    await fetch('/api/auth/logout',{
+     method:'POST',
+     credentials:'same-origin'
+    })
+
+    throw new Error('Akun ini bukan administrator.')
+   }
+
+   // Login ADMIN berhasil
+   location.href='admin.html#dashboard'
+
+  }catch(error){
+
+   msg.innerHTML=`
+    <span style="color:#b44">
+     ${escapeHtml(error.message)}
+    </span>
+   `
+
+  }finally{
+
+   button.disabled=false
+
   }
-}
+ }
 }
 
 function profilePage(){
  const u=currentUser()
- if(!u){ location.href='login.html'; return }
- const orders=getPesanan().filter(o=>o && o.customerId===u.id)
+
+ if(!u){
+  location.href='login.html'
+  return
+ }
+
+ const orders=getPesanan().filter(
+  o=>o && String(o.customerId)===String(u.id)
+ )
+
  const initials=(u.name||'P').trim().charAt(0).toUpperCase()
+
  document.querySelector('#app').innerHTML=`${nav()}<main class="profile-page">
-  <section class="profile-hero"><div><span class="eyebrow">Akun Makanin</span><h1>Profil pengguna</h1><p>Kelola data akun dan lihat ringkasan aktivitas pesanan kamu.</p></div><div class="profile-avatar-large">${initials}</div></section>
+  <section class="profile-hero">
+   <div>
+    <span class="eyebrow">Akun Makanin</span>
+    <h1>Profil pengguna</h1>
+    <p>Kelola data akun dan lihat ringkasan aktivitas pesanan kamu.</p>
+   </div>
+   <div class="profile-avatar-large">${escapeHtml(initials)}</div>
+  </section>
+
   <section class="profile-grid">
-   <article class="profile-card"><div class="profile-card-head"><div><span class="eyebrow">Informasi pribadi</span><h2>Data akun</h2></div><span class="profile-badge">Customer</span></div>
-    <form id="profileForm"><label>Nama lengkap<input id="profileName" value="${escapeHtml(u.name)}" required></label><label>No. HP<input id="profilePhone" value="${escapeHtml(u.phone||'')}" required></label><label>Email<input value="${escapeHtml(u.email)}" disabled></label><label>Alamat<textarea id="profileAddress" rows="4" required>${escapeHtml(u.address||'')}</textarea></label><button class="btn primary" type="submit">Simpan perubahan</button></form><div id="profileMsg"></div>
+   <article class="profile-card">
+    <div class="profile-card-head">
+     <div>
+      <span class="eyebrow">Informasi pribadi</span>
+      <h2>Data akun</h2>
+     </div>
+     <span class="profile-badge">Customer</span>
+    </div>
+
+    <form id="profileForm">
+     <label>
+      Nama lengkap
+      <input id="profileName" value="${escapeHtml(u.name)}" required>
+     </label>
+
+     <label>
+      No. HP
+      <input id="profilePhone" value="${escapeHtml(u.phone||'')}" required>
+     </label>
+
+     <label>
+      Email
+      <input value="${escapeHtml(u.email)}" disabled>
+     </label>
+
+     <label>
+      Alamat
+      <textarea id="profileAddress" rows="4" required>${escapeHtml(u.address||'')}</textarea>
+     </label>
+
+     <button class="btn primary" type="submit">
+      Simpan perubahan
+     </button>
+    </form>
+
+    <div id="profileMsg"></div>
    </article>
-   <aside class="profile-card profile-summary"><span class="eyebrow">Aktivitas</span><h2>Ringkasan akun</h2><div class="profile-stat"><span>Total pesanan</span><b>${orders.length}</b></div><a class="profile-action" href="orders.html">Lihat pesanan saya <span>→</span></a><button class="profile-action danger" id="logoutUser">Keluar dari akun <span>↗</span></button></aside>
+
+   <aside class="profile-card profile-summary">
+    <span class="eyebrow">Aktivitas</span>
+    <h2>Ringkasan akun</h2>
+
+    <div class="profile-stat">
+     <span>Total pesanan</span>
+     <b>${orders.length}</b>
+    </div>
+
+    <a class="profile-action" href="orders.html">
+     Lihat pesanan saya <span>→</span>
+    </a>
+
+    <button class="profile-action danger" id="logoutUser">
+     Keluar dari akun <span>↗</span>
+    </button>
+   </aside>
   </section>
  </main>${footer()}`
- document.querySelector('#profileForm').onsubmit=e=>{
+
+ // Proses update profil
+ document.querySelector('#profileForm').onsubmit=async e=>{
   e.preventDefault()
-  const updated={...u,name:document.querySelector('#profileName').value.trim(),phone:document.querySelector('#profilePhone').value.trim(),address:document.querySelector('#profileAddress').value.trim()}
-  const users=getUsers().map(x=>x.id===u.id?{...x,...updated}:x)
-  localStorage.setItem('makanin_users',JSON.stringify(users));localStorage.setItem('makanin_current_user',JSON.stringify(updated))
-  document.querySelector('#profileMsg').innerHTML='<div class="message success">Profil berhasil diperbarui.</div>'
+
+  const name=document.querySelector('#profileName').value.trim()
+  const phone=document.querySelector('#profilePhone').value.trim()
+  const address=document.querySelector('#profileAddress').value.trim()
+
+  const msg=document.querySelector('#profileMsg')
+  const button=document.querySelector('#profileForm button')
+
+  if(!name || !phone || !address){
+   msg.innerHTML='<div class="message error">Semua data wajib diisi.</div>'
+   return
+  }
+
+  if(!/^[0-9]{10,13}$/.test(phone)){
+   msg.innerHTML='<div class="message error">Nomor HP harus 10–13 digit.</div>'
+   return
+  }
+
+  button.disabled=true
+
+  try{
+   const response=await fetch('/api/auth/profile',{
+    method:'PUT',
+    headers:{
+     'Content-Type':'application/json'
+    },
+    credentials:'same-origin',
+    body:JSON.stringify({
+     name,
+     phone,
+     address
+    })
+   })
+
+   const result=await response.json()
+
+   if(response.status===401){
+    location.href='login.html'
+    return
+   }
+
+   if(!response.ok || !result.success){
+    throw new Error(result.message || 'Gagal memperbarui profil.')
+   }
+
+   // Perbarui session user di frontend
+   sessionUser=result.data
+
+   msg.innerHTML='<div class="message success">Profil berhasil diperbarui dan disimpan ke database.</div>'
+
+   // Refresh agar nama terbaru tampil di navigasi
+   setTimeout(()=>{
+    location.reload()
+   },1000)
+
+  }catch(error){
+   msg.innerHTML=`<div class="message error">${escapeHtml(error.message)}</div>`
+  }finally{
+   button.disabled=false
+  }
  }
+
  document.querySelector('#logoutUser').onclick=logoutUser
 }
 
@@ -454,9 +777,42 @@ function ordersPage(){
  document.querySelector('#app').innerHTML=`${nav()}<main class="inner-page"><div class="page-intro compact"><span class="eyebrow">Area pelanggan</span><h1>Pesanan saya</h1><p>Lihat dan pantau pesanan Makanin kamu.</p></div>${!u?`<div class="empty-state"><h2>Silakan masuk</h2><a class="btn primary" href="login.html">Masuk</a></div>`:!orders.length?`<div class="empty-state"><h2>Belum ada pesanan</h2><p>Menu favorit kamu sudah menunggu.</p><a class="btn primary" href="menu.html">Lihat Menu</a></div>`:orders.map(o=>`<article class="order-card"><div class="order-top"><div><span class="order-id">${o.id}</span><small>${o.date}</small></div><span class="order-status">${o.status}</span></div><div class="order-type-label">${o.orderType==='Online'?'Pemesanan online':'Makan di tempat'}${o.tableNumber?` · Meja ${o.tableNumber}`:''}</div>${o.items.map(i=>`<div class="order-item"><img src="${i.img}" alt="${i.name}"><span>${i.name} × ${i.qty}</span><b>${rupiah(i.price*i.qty)}</b></div>`).join('')}<div class="order-bottom"><span>${o.payment} · <b class="${o.paid?'paid':'unpaid'}">${o.paymentStatus}</b></span><b>${rupiah(o.total)}</b></div>${o.orderType==='Online'?`<div class="delivery-detail"><b>Alamat pengantaran</b><span>${o.customer.name} · ${o.customer.phone}</span><span>${o.customer.address}</span></div>`:`<div class="delivery-detail"><b>Pesanan makan di tempat</b><span>Meja ${o.tableNumber}</span><span>Pembayaran COD dilakukan di restoran.</span></div>`}</article>`).join('')}</main>${footer()}`
 }
 
-function adminPage(){
- if(localStorage.getItem('makanin_admin')!=='true'){location.href='admin-login.html';return}
+async function adminPage(){
+
+ // Periksa session dan role ADMIN melalui backend
+ let adminUser
+
+ try{
+
+  const response=await fetch('/api/admin/test',{
+   method:'GET',
+   credentials:'same-origin',
+   cache:'no-store'
+  })
+
+  const result=await response.json()
+
+  if(
+   !response.ok ||
+   !result.success ||
+   result.data?.role!=='ADMIN'
+  ){
+   location.href='admin-login.html'
+   return
+  }
+
+  adminUser=result.data
+
+ }catch(error){
+
+  console.error('Admin authentication error:',error)
+  location.href='admin-login.html'
+  return
+
+ }
+
  const statusList=['Pesanan sedang dibuat','Sedang diproses','Sedang diantar','Pesanan selesai','Dibatalkan']
+
  const categories=['Nasi','Mie','Ayam','Pizza & Burger','Dessert','Minuman']
  const safe=v=>escapeHtml(v??'—')
  const syncUsers=()=>{
@@ -513,7 +869,10 @@ function adminPage(){
    <button type="button" class="side ${tab==='customers'?'active':''}" data-tab="customers">Pelanggan</button>
    <button type="button" class="side ${tab==='menu'?'active':''}" data-tab="menu">Menu</button>
    <button type="button" class="side ${tab==='reports'?'active':''}" data-tab="reports">Laporan</button>
-   <div class="admin-side-user"><span>Login sebagai</span><b>admin@makanin.id</b></div><button type="button" class="side logout" id="logout">Keluar</button>
+  <div class="admin-side-user">
+  <span>Login sebagai</span>
+  <b>${safe(adminUser.email)}</b>
+  </div><button type="button" class="side logout" id="logout">Keluar</button>
   </aside><main class="admin-main"><header class="admin-head"><div><span class="eyebrow">Manajemen Makanin</span><h1>${tab==='dashboard'?'Selamat datang, Admin.':tab==='online'?'Pesanan Online':tab==='dinein'?'Pesanan Dine-in':tab==='customers'?'Data Pelanggan':tab==='menu'?'Kelola Menu':'Laporan Penjualan'}</h1><p>Admin mengelola menu, pelanggan, pesanan, pembayaran, dan laporan restoran.</p></div><span class="admin-pill">Admin</span></header>
    ${tab==='dashboard'?`<section class="admin-panel active-panel"><div class="admin-stats"><div><small>Total Pesanan</small><b>${orders.length}</b></div><div><small>Pesanan Baru</small><b>${pendingOrders}</b></div><div><small>Pelanggan</small><b>${users.length}</b></div><div><small>Menu</small><b>${foodsNow.length}</b></div><div><small>Penjualan Dibayar</small><b>${rupiah(paidRevenue)}</b></div></div><div class="status-overview"><div><span>Dibuat</span><b>${statusCount('Pesanan sedang dibuat')}</b></div><div><span>Diproses</span><b>${statusCount('Sedang diproses')}</b></div><div><span>Diantar</span><b>${statusCount('Sedang diantar')}</b></div><div><span>Selesai</span><b>${statusCount('Pesanan selesai')}</b></div></div><div class="admin-section"><div class="admin-section-head"><h2>Pesanan terbaru</h2><div class="dashboard-order-links"><button type="button" class="admin-link" data-tab="online">Lihat pesanan online</button><button type="button" class="admin-link" data-tab="dinein">Lihat pesanan dine-in</button></div></div><div class="admin-order-list">${orders.length?orders.slice(0,5).map(orderCard).join(''):'<div class="no-data">Belum ada pesanan.</div>'}</div></div></section>`:''}
    ${tab==='online'?orderSection('Pesanan Online',onlineOrders,'Belum ada pesanan online.') :''}
@@ -524,7 +883,33 @@ function adminPage(){
   </main></div><div id="foodModal"></div>`
 
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.dataset.tab}))
-  document.querySelector('#logout').onclick=()=>{localStorage.removeItem('makanin_admin');location.href='admin-login.html'}
+  document.querySelector('#logout').onclick=async()=>{
+
+ const button=document.querySelector('#logout')
+ button.disabled=true
+
+ try{
+
+  const response=await fetch('/api/auth/logout',{
+   method:'POST',
+   credentials:'same-origin'
+  })
+
+  const result=await response.json()
+
+  if(!response.ok || !result.success){
+   throw new Error(result.message || 'Logout gagal.')
+  }
+
+  location.href='admin-login.html'
+
+ }catch(error){
+
+  alert(error.message)
+  button.disabled=false
+
+ }
+}
   document.querySelectorAll('[data-status-id]').forEach(sel=>sel.addEventListener('change',()=>{
    const list=getPesanan()
    const o=list.find(x=>String(x.id)===String(sel.dataset.statusId))
@@ -624,19 +1009,36 @@ function adminPage(){
 
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 
-window.addEventListener('storage',e=>{if(e.key==='makanin_foods'||e.key==='makanin_foods_version') location.reload()})
+window.addEventListener('storage', e => {
+  if (
+    e.key === 'makanin_foods' ||
+    e.key === 'makanin_foods_version'
+  ) {
+    location.reload();
+  }
+});
 
-const path=location.pathname.split('/').pop()||'index.html'
-if(path==='index.html')home()
-else if(path==='menu.html')menuPage()
-else if(path==='detail.html')detailPage()
-else if(path==='register.html')registerPage()
-else if(path==='login.html')loginPage()
-else if(path==='profile.html')profilePage()
-else if(path==='admin-login.html')adminMasukPage()
-else if(path==='admin.html')adminPage()
-else if(path==='cart.html')cartPage()
-else if(path==='checkout.html')checkoutPage()
-else if(path==='orders.html')ordersPage()
-else home()
-updateCartCount()
+(async function initializeMakanin() {
+
+  // Periksa session terlebih dahulu
+  await loadCurrentUser();
+
+  // Tentukan halaman yang akan ditampilkan
+  const path = location.pathname.split('/').pop() || 'index.html';
+
+  if (path === 'index.html') home();
+  else if (path === 'menu.html') menuPage();
+  else if (path === 'detail.html') detailPage();
+  else if (path === 'register.html') registerPage();
+  else if (path === 'login.html') loginPage();
+  else if (path === 'profile.html') profilePage();
+  else if (path === 'admin-login.html') adminMasukPage();
+  else if (path === 'admin.html') adminPage();
+  else if (path === 'cart.html') cartPage();
+  else if (path === 'checkout.html') checkoutPage();
+  else if (path === 'orders.html') ordersPage();
+  else home();
+
+  updateCartCount();
+
+})();
