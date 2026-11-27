@@ -7,9 +7,24 @@ import {
 
 export const runtime = "nodejs";
 
+const EMAIL_PATTERN =
+  /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
+
 export async function POST(request) {
   try {
-    const body = await request.json();
+    let body;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Format permintaan tidak valid.",
+        },
+        { status: 400 }
+      );
+    }
 
     const email =
       typeof body.email === "string"
@@ -21,11 +36,26 @@ export async function POST(request) {
         ? body.password
         : "";
 
-    if (!email || !password) {
+    // Validasi email
+    if (!EMAIL_PATTERN.test(email) || email.length > 254) {
       return NextResponse.json(
         {
           success: false,
-          message: "Email dan password wajib diisi.",
+          message: "Format email tidak valid.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validasi password
+    if (
+      !password ||
+      new TextEncoder().encode(password).length > 72
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Password tidak valid.",
         },
         { status: 400 }
       );
@@ -72,10 +102,10 @@ export async function POST(request) {
       );
     }
 
-    // Buat session login
+    // Buat session
     await createSession(user);
 
-    // Jangan mengirim passwordHash ke frontend
+    // Jangan kirim passwordHash ke frontend
     const safeUser = {
       id: user.id,
       name: user.name,
@@ -98,6 +128,7 @@ export async function POST(request) {
         },
       }
     );
+
   } catch (error) {
     console.error("Login API error:", error);
 

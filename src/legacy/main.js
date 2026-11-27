@@ -384,10 +384,6 @@ function loginPage(){
     throw new Error(result.message || 'Email atau kata sandi salah.')
    }
 
-   if(result.data){
-    localStorage.setItem('makanin_current_user',JSON.stringify(result.data))
-   }
-
    localStorage.removeItem('makanin_last_register_email')
 
    msg.innerHTML='<div class="message success">Login berhasil. Selamat datang di Makanin!</div>'
@@ -764,7 +760,7 @@ if(!online && !table){
    if(online&&!document.querySelector('#paidConfirm')?.checked){document.querySelector('#checkoutMsg').innerHTML='<div class="message error">Konfirmasi pembayaran terlebih dahulu agar pesanan dapat dibuat.</div>';return}
    const sub=c.reduce((s,x)=>s+x.price*x.qty,0),del=online?(sub>=150000?0:15000):0
    const order={id:'MK-'+Date.now().toString().slice(-6),customerId:u.id,orderType:type,customer:{name,phone,address:address||u.address||'',email:u.email},tableNumber:table,items:c.map(x=>({id:x.id,name:x.name,category:x.category,price:x.price,qty:x.qty,img:x.img})),subtotal:sub,delivery:del,total:sub+del,payment,paid:online,paymentStatus:online?'Sudah Dibayar':'Belum Dibayar',status:'Pesanan sedang dibuat',date:new Date().toLocaleString('id-ID')}
-   const orders=getPesanan();orders.unshift(order);localStorage.setItem('makanin_orders',JSON.stringify(orders));localStorage.setItem('makanin_current_user',JSON.stringify({...u,name,phone,address:address||u.address||''}));setCart([])
+   const orders=getPesanan();orders.unshift(order);localStorage.setItem('makanin_orders',JSON.stringify(orders));setCart([])
    document.querySelector('#checkoutMsg').innerHTML=`<div class="message success">Pesanan <b>${order.id}</b> berhasil dibuat. ${online?'Pembayaran terverifikasi.':'Pesanan makan di tempat sudah tercatat.'}</div>`
    setTimeout(()=>location.href='orders.html',900)
   }

@@ -4,9 +4,24 @@ import { hashPassword } from "../../../../src/lib/auth";
 
 export const runtime = "nodejs";
 
+const EMAIL_PATTERN =
+  /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
+
 export async function POST(request) {
   try {
-    const body = await request.json();
+    let body;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Format permintaan tidak valid.",
+        },
+        { status: 400 }
+      );
+    }
 
     const name =
       typeof body.name === "string" ? body.name.trim() : "";
@@ -37,9 +52,10 @@ export async function POST(request) {
     }
 
     // Validasi email
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailPattern.test(email) || email.length > 254) {
+    if (
+      !EMAIL_PATTERN.test(email) ||
+      email.length > 254
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -49,31 +65,43 @@ export async function POST(request) {
       );
     }
 
+    // Validasi nomor HP
+    if (!/^[0-9]{10,13}$/.test(phone)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Nomor HP harus terdiri dari 10-13 digit.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validasi alamat
+    if (!address || address.length > 500) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Alamat wajib diisi dan maksimal 500 karakter.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Validasi password
-    if (
-      password.length < 8 ||
-      new TextEncoder().encode(password).length > 72
-    ) {
+    const passwordBytes =
+      new TextEncoder().encode(password).length;
+
+    if (password.length < 8 || passwordBytes > 72) {
       return NextResponse.json(
         {
           success: false,
-          message: "Password harus minimal 8 karakter dan maksimal 72 byte.",
+          message: "Password minimal 8 karakter dan maksimal 72 byte.",
         },
         { status: 400 }
       );
     }
 
-    if (phone.length > 30 || address.length > 500) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Data nomor HP atau alamat terlalu panjang.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Periksa apakah email sudah terdaftar
+    // Periksa email yang sudah terdaftar
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -91,14 +119,14 @@ export async function POST(request) {
     // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Simpan pengguna ke database
+    // Simpan customer ke database
     const user = await prisma.user.create({
       data: {
         name,
         email,
         passwordHash,
-        phone: phone || null,
-        address: address || null,
+        phone,
+        address,
         role: "CUSTOMER",
       },
       select: {
@@ -119,6 +147,7 @@ export async function POST(request) {
       },
       { status: 201 }
     );
+
   } catch (error) {
     console.error("Register API error:", error);
 
