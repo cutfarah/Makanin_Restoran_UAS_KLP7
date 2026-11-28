@@ -158,111 +158,703 @@ function foodCard(f){
  </article>`
 }
 
-function bindFoodActions(){
- document.querySelectorAll('[data-add]').forEach(btn=>btn.onclick=()=>{
-  const f=getFoods().find(x=>x.id===Number(btn.dataset.add)),cart=getCart(),found=cart.find(x=>x.id===f.id)
-  if(found)found.qty++;else cart.push({...f,qty:1})
-  setCart(cart);btn.textContent='Ditambahkan';setTimeout(()=>btn.textContent='Tambah',800)
- })
- document.querySelectorAll('[data-ulasan]').forEach(btn=>btn.onclick=()=>{
-  const f=getFoods().find(x=>x.id===Number(btn.dataset.ulasan))
-  document.querySelector('#ulasanModal').innerHTML=`<div class="modal-backdrop"><div class="modal"><button class="modal-close">×</button><span class="eyebrow">Ulasan Pelanggan</span><h2>${f.name}</h2><div class="modal-rating">★ ${f.rating} · ${f.ulasan.length} ulasan</div>${f.ulasan.map(r=>`<div class="ulasan"><div class="ulasan-head"><b>${r[0]}</b><span>★★★★★</span></div><p>${r[1]}</p></div>`).join('')}</div></div>`
-  document.querySelector('.modal-close').onclick=()=>document.querySelector('#ulasanModal').innerHTML=''
- })
+let customerFoodsCache = [];
+
+function bindFoodActions() {
+
+  const findFood = id => {
+    return customerFoodsCache.find(
+      x => String(x.id) === String(id)
+    ) || getFoods().find(
+      x => String(x.id) === String(id)
+    );
+  };
+
+  // Tambah ke keranjang
+  document.querySelectorAll('[data-add]').forEach(btn => {
+
+    btn.onclick = () => {
+
+      const f = findFood(btn.dataset.add);
+
+      if (!f) {
+        alert('Menu tidak ditemukan.');
+        return;
+      }
+
+      if (
+        f.isAvailable === false ||
+        (f.stock !== undefined && Number(f.stock) <= 0)
+      ) {
+        alert('Menu sedang tidak tersedia.');
+        return;
+      }
+
+      const cart = getCart();
+
+      const found = cart.find(
+        x => String(x.id) === String(f.id)
+      );
+
+      if (found) {
+        found.qty++;
+      } else {
+        cart.push({
+          ...f,
+          qty: 1
+        });
+      }
+
+      setCart(cart);
+
+      btn.textContent = 'Ditambahkan';
+
+      setTimeout(() => {
+        btn.textContent = 'Tambah';
+      }, 800);
+
+    };
+
+  });
+
+  // Menampilkan ulasan
+  document.querySelectorAll('[data-ulasan]').forEach(btn => {
+
+    btn.onclick = () => {
+
+      const f = findFood(btn.dataset.ulasan);
+
+      if (!f) return;
+
+      const reviews = Array.isArray(f.ulasan)
+        ? f.ulasan
+        : [];
+
+      document.querySelector('#ulasanModal').innerHTML = `
+        <div class="modal-backdrop">
+          <div class="modal">
+
+            <button class="modal-close">×</button>
+
+            <span class="eyebrow">Ulasan Pelanggan</span>
+
+            <h2>${escapeHtml(f.name)}</h2>
+
+            <div class="modal-rating">
+              ★ ${f.rating} · ${reviews.length} ulasan
+            </div>
+
+            ${reviews.map(r => `
+              <div class="ulasan">
+                <div class="ulasan-head">
+                  <b>${escapeHtml(r[0])}</b>
+                  <span>★★★★★</span>
+                </div>
+                <p>${escapeHtml(r[1])}</p>
+              </div>
+            `).join('')}
+
+          </div>
+        </div>
+      `;
+
+      document.querySelector('.modal-close').onclick = () => {
+        document.querySelector('#ulasanModal').innerHTML = '';
+      };
+
+    };
+
+  });
+
 }
 
-function home(){
- document.title='Makanin — Restaurant & Food'
- document.querySelector('#app').innerHTML=`${nav()}<main>
- <section class="hero"><div class="hero-copy"><span class="eyebrow">Makanan hangat, dibuat dengan rasa</span><h1>Good food.<br><em>Good mood.</em></h1><p>Menu favorit yang dibuat dari bahan segar, dengan rasa yang nyaman dan pelayanan yang ramah.</p><div class="hero-actions"><a class="btn primary" href="menu.html">Lihat Menu</a><a class="text-btn" href="#about">Cerita Kami</a></div><div class="hero-note"><span>★★★★★</span><b>4.9/5</b><small>dari 1.000+ pelanggan</small></div></div><div class="hero-visual"><img src="${IMG.hero}" alt="Pilihan makanan Makanin"><div class="hero-card"><b>Signature Table</b><strong>Good food. Good mood.</strong><span>Menu pilihan Makanin · ★ 4.9</span></div></div></section>
- <section class="trust"><div><b>01</b><span>Bahan segar<br><small>dipilih setiap pagi</small></span></div><div><b>02</b><span>Dibuat setelah dipesan<br><small>hangat dan segar</small></span></div><div><b>03</b><span>Pesan dengan mudah<br><small>checkout sederhana</small></span></div><div><b>04</b><span>Pelayanan ramah<br><small>siap membantu</small></span></div></section>
- <section class="section" id="explore"><div class="section-heading"><div><span class="eyebrow">Jelajahi</span><h2>Lebih dari sekadar makanan</h2></div><p>Lihat pilihan menu dan suasana Makanin yang nyaman untuk makan bersama.</p></div>
- <div class="explore-grid"><a class="explore-card large"><img src="${IMG.restaurant}" alt="Restoran Makanin"><div><span>Restoran</span><h3>Tempat untuk bersantai</h3></div></a><a class="explore-card"><img src="${IMG.ambience}" alt="Suasana restoran"><div><span>Atmosfer</span><h3>Hangat, sederhana & nyaman</h3></div></a><a class="explore-card"><img src="${IMG.pizzaMargherita}" alt="Pizza Makanin"><div><span>Dari dapur</span><h3>Dibuat dengan sepenuh hati</h3></div></a></div></section>
- <section class="section light-section"><div class="section-heading"><div><span class="eyebrow">Favorit hari ini</span><h2>Pilihan untuk selera kamu</h2></div><a class="under-link" href="menu.html">Lihat semua menu</a></div><div class="food-grid">${getFoods().slice(0,4).map(foodCard).join('')}</div></section>
- <section class="story section" id="about"><div class="story-image"><img src="${IMG.restaurant}" alt="Makanin restaurant"></div><div><span class="eyebrow">Cerita kami</span><h2>Makanan yang terasa familiar, dengan cara yang lebih spesial.</h2><p>Makanin hadir dengan ide sederhana: membuat pengalaman makan yang nyaman, mudah, dan berkesan. Menu dibuat dari bahan pilihan dengan rasa yang akrab bagi pelanggan lokal.</p><a class="btn outline" href="menu.html">Lihat Menu</a></div></section>
- <section class="section ulasan-section" id="ulasan"><div class="section-heading center"><div><span class="eyebrow">Ulasan pelanggan</span><h2>Kata mereka tentang Makanin</h2></div></div><div class="ulasan-grid">${[
- ['Alya Putri','Nasi Goreng Kampung','Nasinya gurih, porsinya pas, dan datang masih hangat.'],
- ['Raka Pratama','Pizza Margherita','Crust-nya tipis dan renyah. Cocok dimakan ramai-ramai.'],
- ['Nadia Rahma','Ayam Bakar Madu','Ayamnya lembut dan bumbu madunya enak.']
- ].map(x=>`<article class="quote"><span>★★★★★</span><p>“${x[2]}”</p><b>${x[0]}</b><small>${x[1]}</small></article>`).join('')}</div></section>
- </main><div id="ulasanModal"></div>${footer()}`
- bindFoodActions();updateCartCount()
+
+async function home(){
+
+  document.title = 'Makanin — Restaurant & Food';
+
+  document.querySelector('#app').innerHTML = `
+    ${nav()}
+
+    <main>
+
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">Makanan hangat, dibuat dengan rasa</span>
+          <h1>Good food.<br><em>Good mood.</em></h1>
+          <p>Menu favorit yang dibuat dari bahan segar, dengan rasa yang nyaman dan pelayanan yang ramah.</p>
+
+          <div class="hero-actions">
+            <a class="btn primary" href="menu.html">Lihat Menu</a>
+            <a class="text-btn" href="#about">Cerita Kami</a>
+          </div>
+
+          <div class="hero-note">
+            <span>★★★★★</span>
+            <b>4.9/5</b>
+            <small>dari 1.000+ pelanggan</small>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <img src="${IMG.hero}" alt="Pilihan makanan Makanin">
+          <div class="hero-card">
+            <b>Signature Table</b>
+            <strong>Good food. Good mood.</strong>
+            <span>Menu pilihan Makanin · ★ 4.9</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust">
+        <div><b>01</b><span>Bahan segar<br><small>dipilih setiap pagi</small></span></div>
+        <div><b>02</b><span>Dibuat setelah dipesan<br><small>hangat dan segar</small></span></div>
+        <div><b>03</b><span>Pesan dengan mudah<br><small>checkout sederhana</small></span></div>
+        <div><b>04</b><span>Pelayanan ramah<br><small>siap membantu</small></span></div>
+      </section>
+
+      <section class="section" id="explore">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Jelajahi</span>
+            <h2>Lebih dari sekadar makanan</h2>
+          </div>
+          <p>Lihat pilihan menu dan suasana Makanin yang nyaman untuk makan bersama.</p>
+        </div>
+
+        <div class="explore-grid">
+          <a class="explore-card large">
+            <img src="${IMG.restaurant}" alt="Restoran Makanin">
+            <div><span>Restoran</span><h3>Tempat untuk bersantai</h3></div>
+          </a>
+
+          <a class="explore-card">
+            <img src="${IMG.ambience}" alt="Suasana restoran">
+            <div><span>Atmosfer</span><h3>Hangat, sederhana & nyaman</h3></div>
+          </a>
+
+          <a class="explore-card">
+            <img src="${IMG.pizzaMargherita}" alt="Pizza Makanin">
+            <div><span>Dari dapur</span><h3>Dibuat dengan sepenuh hati</h3></div>
+          </a>
+        </div>
+      </section>
+
+      <section class="section light-section">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Favorit hari ini</span>
+            <h2>Pilihan untuk selera kamu</h2>
+          </div>
+          <a class="under-link" href="menu.html">Lihat semua menu</a>
+        </div>
+
+        <div class="food-grid" id="homeFavorites">
+          <div class="no-data">Memuat menu...</div>
+        </div>
+      </section>
+
+      <section class="story section" id="about">
+        <div class="story-image">
+          <img src="${IMG.restaurant}" alt="Makanin restaurant">
+        </div>
+        <div>
+          <span class="eyebrow">Cerita kami</span>
+          <h2>Makanan yang terasa familiar, dengan cara yang lebih spesial.</h2>
+          <p>Makanin hadir dengan ide sederhana: membuat pengalaman makan yang nyaman, mudah, dan berkesan. Menu dibuat dari bahan pilihan dengan rasa yang akrab bagi pelanggan lokal.</p>
+          <a class="btn outline" href="menu.html">Lihat Menu</a>
+        </div>
+      </section>
+
+      <section class="section ulasan-section" id="ulasan">
+        <div class="section-heading center">
+          <div>
+            <span class="eyebrow">Ulasan pelanggan</span>
+            <h2>Kata mereka tentang Makanin</h2>
+          </div>
+        </div>
+
+        <div class="ulasan-grid">
+          ${[
+            ['Alya Putri','Nasi Goreng Kampung','Nasinya gurih, porsinya pas, dan datang masih hangat.'],
+            ['Raka Pratama','Pizza Margherita','Crust-nya tipis dan renyah. Cocok dimakan ramai-ramai.'],
+            ['Nadia Rahma','Ayam Bakar Madu','Ayamnya lembut dan bumbu madunya enak.']
+          ].map(x => `
+            <article class="quote">
+              <span>★★★★★</span>
+              <p>“${x[2]}”</p>
+              <b>${x[0]}</b>
+              <small>${x[1]}</small>
+            </article>
+          `).join('')}
+        </div>
+      </section>
+
+    </main>
+
+    <div id="ulasanModal"></div>
+
+    ${footer()}
+  `;
+
+  updateCartCount();
+
+  // Ambil menu langsung dari Prisma
+  try {
+
+    const response = await fetch('/api/foods', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Gagal mengambil menu.');
+    }
+
+    // Samakan format data Prisma dengan foodCard
+    customerFoodsCache = (
+      Array.isArray(result.data) ? result.data : []
+    ).map(f => ({
+
+      ...f,
+
+      category:
+        typeof f.category === 'string'
+          ? f.category
+          : f.category?.name || 'Tanpa Kategori',
+
+      img: f.imageUrl || f.img || IMG.restaurant,
+
+      rating: Number(f.rating ?? 5),
+
+      ulasan: Array.isArray(f.ulasan)
+        ? f.ulasan
+        : [],
+
+      price: Number(f.price || 0),
+
+      stock: Number(f.stock ?? 0),
+
+      isAvailable: f.isAvailable !== false
+
+    }));
+
+    const favorites = customerFoodsCache.slice(0, 4);
+
+    const root = document.querySelector('#homeFavorites');
+
+    root.innerHTML = favorites.length
+      ? favorites.map(foodCard).join('')
+      : '<div class="no-data">Belum ada menu tersedia.</div>';
+
+    bindFoodActions();
+
+  } catch (error) {
+
+    console.error('Gagal memuat menu beranda:', error);
+
+    document.querySelector('#homeFavorites').innerHTML = `
+      <div class="no-data">
+        Gagal memuat menu dari database.
+        ${escapeHtml(error.message)}
+      </div>
+    `;
+
+  }
+
 }
 
-function menuPage(){
- document.querySelector('#app').innerHTML=`${nav()}<main class="inner-page"><section class="page-intro"><span class="eyebrow">Menu Makanin</span><h1>Choose what feels good.</h1><p>Pilihan makanan yang disiapkan segar setiap hari.</p></section>
- <div class="filters">${['Semua','Nasi','Mie','Ayam','Pizza & Burger','Dessert','Minuman'].map((x,i)=>`<button class="${i?'':'active'}" data-filter="${x}">${x}</button>`).join('')}</div><div class="menu-search">
- <input id="menuSearch" type="search" placeholder="Cari nama makanan...">
-</div><div class="food-grid menu-grid">${getFoods().map(foodCard).join('')}</div></main><div id="ulasanModal"></div>${footer()}`
-let currentCategory='Semua'
-let currentSearch=''
+async function menuPage() {
 
-const render=()=>{
- const foodsNow=getFoods().filter(f=>{
-  const matchCategory=
-   currentCategory==='Semua'||f.category===currentCategory
+  document.title = 'Menu Makanin';
 
-  const matchSearch=
-   f.name.toLowerCase().includes(currentSearch.toLowerCase())
+  document.querySelector('#app').innerHTML = `
+    ${nav()}
 
-  return matchCategory&&matchSearch
- })
+    <main class="inner-page">
 
- document.querySelector('.menu-grid').innerHTML=
-  foodsNow.length
-   ? foodsNow.map(foodCard).join('')
-   : '<div class="no-data">Menu yang dicari tidak ditemukan.</div>'
+      <section class="page-intro">
+        <span class="eyebrow">Menu Makanin</span>
+        <h1>Choose what feels good.</h1>
+        <p>Pilihan makanan yang disiapkan segar setiap hari.</p>
+      </section>
 
- bindFoodActions()
+      <div class="filters" id="menuFilters"></div>
 
- document.querySelectorAll('[data-filter]').forEach(b=>{
-  b.classList.toggle(
-   'active',
-   b.dataset.filter===currentCategory
-  )
- })
+      <div class="menu-search">
+        <input
+          id="menuSearch"
+          type="search"
+          placeholder="Cari nama makanan..."
+        >
+      </div>
+
+      <div class="food-grid menu-grid">
+        <div class="no-data">Memuat menu...</div>
+      </div>
+
+    </main>
+
+    <div id="ulasanModal"></div>
+
+    ${footer()}
+  `;
+
+  let currentCategory = 'Semua';
+  let currentSearch = '';
+
+  const filterRoot = document.querySelector('#menuFilters');
+  const grid = document.querySelector('.menu-grid');
+
+  // Render menu
+  const render = () => {
+
+    const foodsNow = customerFoodsCache.filter(f => {
+
+      const matchCategory =
+        currentCategory === 'Semua' ||
+        f.category === currentCategory;
+
+      const matchSearch =
+        f.name.toLowerCase().includes(
+          currentSearch.toLowerCase()
+        );
+
+      return matchCategory && matchSearch;
+
+    });
+
+    grid.innerHTML = foodsNow.length
+      ? foodsNow.map(foodCard).join('')
+      : '<div class="no-data">Menu yang dicari tidak ditemukan.</div>';
+
+    bindFoodActions();
+
+    filterRoot.querySelectorAll('[data-filter]').forEach(btn => {
+
+      btn.classList.toggle(
+        'active',
+        btn.dataset.filter === currentCategory
+      );
+
+    });
+
+  };
+
+  try {
+
+    // Ambil data langsung dari Prisma melalui API
+    const [foodResponse, categoryResponse] =
+      await Promise.all([
+
+        fetch('/api/foods', {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store'
+        }),
+
+        fetch('/api/categories', {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store'
+        })
+
+      ]);
+
+    const foodResult = await foodResponse.json();
+
+    const categoryResult = categoryResponse.ok
+      ? await categoryResponse.json().catch(() => null)
+      : null;
+
+    if (!foodResponse.ok || !foodResult.success) {
+      throw new Error(
+        foodResult.message || 'Gagal mengambil menu dari database.'
+      );
+    }
+
+    // Ubah format Prisma agar cocok dengan foodCard lama
+    customerFoodsCache = (
+      Array.isArray(foodResult.data)
+        ? foodResult.data
+        : []
+    ).map(f => ({
+
+      ...f,
+
+      category:
+        typeof f.category === 'string'
+          ? f.category
+          : f.category?.name || 'Tanpa Kategori',
+
+      img: f.imageUrl || f.img || IMG.restaurant,
+
+      rating: Number(f.rating ?? 5),
+
+      ulasan: Array.isArray(f.ulasan)
+        ? f.ulasan
+        : [],
+
+      price: Number(f.price || 0),
+
+      stock: Number(f.stock ?? 0),
+
+      isAvailable: f.isAvailable !== false
+
+    }));
+
+    // Ambil kategori dari database
+    let categoryNames = Array.isArray(categoryResult?.data)
+      ? categoryResult.data
+          .map(c => c.name)
+          .filter(Boolean)
+      : [];
+
+    // Jika kategori kosong, gunakan kategori dari menu
+    if (!categoryNames.length) {
+      categoryNames = [
+        ...new Set(customerFoodsCache.map(f => f.category))
+      ];
+    }
+
+    const filters = [
+      'Semua',
+      ...new Set(categoryNames)
+    ];
+
+    filterRoot.innerHTML = filters.map((name, i) => `
+      <button
+        type="button"
+        class="${i === 0 ? 'active' : ''}"
+        data-filter="${escapeHtml(name)}"
+      >
+        ${escapeHtml(name)}
+      </button>
+    `).join('');
+
+    // Filter kategori
+    filterRoot.querySelectorAll('[data-filter]').forEach(btn => {
+
+      btn.onclick = () => {
+
+        currentCategory = btn.dataset.filter;
+
+        render();
+
+      };
+
+    });
+
+    // Pencarian menu
+    document.querySelector('#menuSearch').oninput = e => {
+
+      currentSearch = e.target.value.trim();
+
+      render();
+
+    };
+
+    // Tampilkan menu dari Prisma
+    render();
+
+  } catch (error) {
+
+    console.error('Gagal memuat menu:', error);
+
+    customerFoodsCache = [];
+
+    grid.innerHTML = `
+      <div class="no-data">
+        Gagal memuat menu dari database.
+        ${escapeHtml(error.message)}
+      </div>
+    `;
+
+  }
+
+  updateCartCount();
+
 }
- document.querySelectorAll('[data-filter]').forEach(b=>{
- b.onclick=()=>{
-  currentCategory=b.dataset.filter
-  render()
- }
-})
 
-document.querySelector('#menuSearch').oninput=e=>{
- currentSearch=e.target.value.trim()
- render()
+
+async function detailPage() {
+
+  const id = new URLSearchParams(location.search).get('id');
+
+  document.querySelector('#app').innerHTML = `
+    ${nav()}
+
+    <main class="detail-page">
+      <div id="detailRoot">
+        <div class="no-data">Memuat detail menu...</div>
+      </div>
+    </main>
+
+    ${footer()}
+  `;
+
+  try {
+
+    const response = await fetch('/api/foods', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Gagal mengambil menu.');
+    }
+
+    customerFoodsCache = (
+      Array.isArray(result.data) ? result.data : []
+    ).map(f => ({
+
+      ...f,
+
+      category:
+        typeof f.category === 'string'
+          ? f.category
+          : f.category?.name || 'Tanpa Kategori',
+
+      img: f.imageUrl || f.img || IMG.restaurant,
+
+      rating: Number(f.rating ?? 5),
+
+      ulasan: Array.isArray(f.ulasan) ? f.ulasan : [],
+
+      price: Number(f.price || 0),
+
+      stock: Number(f.stock ?? 0),
+
+      isAvailable: f.isAvailable !== false
+
+    }));
+
+    const f = customerFoodsCache.find(
+      x => String(x.id) === String(id)
+    );
+
+    if (!f) {
+      throw new Error('Menu tidak ditemukan.');
+    }
+
+    document.title = `${f.name} - Makanin`;
+
+    const reviews = f.ulasan;
+
+    const available =
+      f.isAvailable && Number(f.stock) > 0;
+
+    document.querySelector('#detailRoot').innerHTML = `
+
+      <section class="detail-layout">
+
+        <div class="detail-image">
+          <img
+            src="${escapeHtml(f.img)}"
+            alt="${escapeHtml(f.name)}"
+          >
+        </div>
+
+        <div class="detail-content">
+
+          <span class="eyebrow">
+            ${escapeHtml(f.category)}
+          </span>
+
+          <h1>${escapeHtml(f.name)}</h1>
+
+          <div class="detail-rating">
+            ★ ${f.rating} · ${reviews.length} ulasan
+          </div>
+
+          <p class="detail-description">
+            ${escapeHtml(f.description || 'Menu pilihan Makanin yang disiapkan segar.')}
+          </p>
+
+          <div class="detail-price">
+            ${rupiah(f.price)}
+          </div>
+
+          <button
+            class="btn primary detail-add"
+            data-add="${escapeHtml(f.id)}"
+            ${available ? '' : 'disabled'}
+          >
+            ${available ? 'Tambah ke Keranjang' : 'Tidak Tersedia'}
+          </button>
+
+          <div class="detail-info">
+            <div>
+              <b>Stok</b>
+              <span>${f.stock}</span>
+            </div>
+
+            <div>
+              <b>Ketersediaan</b>
+              <span>${available ? 'Tersedia' : 'Tidak tersedia'}</span>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <section class="detail-reviews" id="ulasan">
+
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Ulasan</span>
+            <h2>Ulasan pelanggan</h2>
+          </div>
+        </div>
+
+        <div class="review-list">
+
+          ${
+            reviews.length
+              ? reviews.map(r => `
+                  <article class="ulasan">
+                    <div class="ulasan-head">
+                      <b>${escapeHtml(r[0])}</b>
+                      <span>★★★★★</span>
+                    </div>
+                    <p>${escapeHtml(r[1])}</p>
+                  </article>
+                `).join('')
+              : '<div class="no-data">Belum ada ulasan.</div>'
+          }
+
+        </div>
+
+      </section>
+
+    `;
+
+    bindFoodActions();
+
+    updateCartCount();
+
+  } catch (error) {
+
+    console.error('Detail menu error:', error);
+
+    document.querySelector('#detailRoot').innerHTML = `
+      <div class="no-data">
+        ${escapeHtml(error.message)}
+        <p><a href="menu.html">Kembali ke menu</a></p>
+      </div>
+    `;
+
+  }
+
 }
 
-bindFoodActions()
-updateCartCount()
-}
-
-
-function detailPage(){
- const id=Number(new URLSearchParams(location.search).get('id'))
- const f=getFoods().find(x=>x.id===id)||getFoods()[0]
- document.title=`${f.name} — Makanin`
- document.querySelector('#app').innerHTML=`${nav()}<main class="detail-page">
-   <section class="detail-layout">
-    <div class="detail-image"><img src="${f.img}" alt="${f.name}"></div>
-    <div class="detail-content">
-      <span class="eyebrow">${f.category}</span>
-      <h1>${f.name}</h1>
-      <div class="detail-rating">★ ${f.rating} · ${f.ulasan.length} ulasan</div>
-      <p class="detail-description">Hidangan ${f.name.toLowerCase()} yang disiapkan segar dengan bahan pilihan. Cocok dinikmati di restoran maupun sebagai bagian dari pesanan online.</p>
-      <div class="detail-price">${rupiah(f.price)}</div>
-      <button class="btn primary detail-add" data-add="${f.id}">Tambah ke Keranjang</button>
-      <div class="detail-info"><div><b>Disiapkan segar</b><span>Dibuat setelah dipesan</span></div><div><b>Porsi</b><span>1 porsi</span></div></div>
-    </div>
-   </section>
-   <section class="detail-reviews" id="ulasan"><div class="section-heading"><div><span class="eyebrow">Ulasan</span><h2>Ulasan pelanggan</h2></div></div>
-    <div class="review-list">${f.ulasan.map(r=>`<article class="ulasan"><div class="ulasan-head"><b>${r[0]}</b><span>★★★★★</span></div><p>${r[1]}</p></article>`).join('')}</div>
-   </section>
- </main>${footer()}`
- bindFoodActions()
- updateCartCount()
-}
 function registerPage(){
  document.querySelector('#app').innerHTML=`${nav()}<main class="auth-wrap"><div class="auth-panel"><div class="auth-copy"><span class="eyebrow">Selamat datang di Makanin</span><h1>Make your next meal a little easier.</h1><p>Buat akun customer untuk menyimpan data dan melihat riwayat pesanan.</p></div><div class="form-card"><div class="form-brand">Makanin</div><h2>Daftar Akun</h2><p class="form-muted">Lengkapi data kamu untuk mulai memesan.</p><form id="registerForm"><label>Nama lengkap<input id="name" required placeholder="Nama lengkap"></label><label>No. HP<input id="phone" required placeholder="08xxxxxxxxxx"></label><label>Alamat<textarea id="address" required rows="3" placeholder="Alamat lengkap"></textarea></label><label>Email<input id="email" type="email" required placeholder="nama@email.com"></label><label>Kata sandi<input id="password" type="password" minlength="8" required placeholder="Minimal 8 karakter"></label><label>Konfirmasi kata sandi<input id="passwordConfirm" type="password" minlength="8" required placeholder="Ulangi kata sandi"></label><button class="btn primary full" type="submit">Daftar Akun</button></form><p class="switch">Sudah punya akun? <a href="login.html">Masuk</a></p><div id="formMsg"></div></div></div></main>${footer()}`
 
@@ -349,6 +941,7 @@ function registerPage(){
  }
 }
 
+
 function loginPage(){
  const rememberedEmail=escapeHtml(localStorage.getItem('makanin_last_register_email')||'')
 
@@ -389,7 +982,11 @@ function loginPage(){
    msg.innerHTML='<div class="message success">Login berhasil. Selamat datang di Makanin!</div>'
 
    setTimeout(()=>{
-    location.href='menu.html'
+    if(result.data?.role === 'ADMIN'){
+     location.href='admin.html#dashboard'
+    }else{
+     location.href='menu.html'
+    }
    },800)
 
   }catch(error){
@@ -399,6 +996,7 @@ function loginPage(){
   }
  }
 }
+
 
 function adminMasukPage(){
 
@@ -530,9 +1128,7 @@ function profilePage(){
   return
  }
 
- const orders=getPesanan().filter(
-  o=>o && String(o.customerId)===String(u.id)
- )
+
 
  const initials=(u.name||'P').trim().charAt(0).toUpperCase()
 
@@ -591,7 +1187,7 @@ function profilePage(){
 
     <div class="profile-stat">
      <span>Total pesanan</span>
-     <b>${orders.length}</b>
+     <b id="profileOrderCount">—</b>
     </div>
 
     <a class="profile-action" href="orders.html">
@@ -603,8 +1199,46 @@ function profilePage(){
     </button>
    </aside>
   </section>
- </main>${footer()}`
+ </main>${footer()}`;
 
+ // AMBIL JUMLAH PESANAN DARI DATABASE PRISMA
+ (async () => {
+  const countElement = document.querySelector('#profileOrderCount');
+
+  try {
+   const response = await fetch('/api/orders', {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store'
+   });
+
+   const result = await response.json();
+
+   if (response.status === 401) {
+    location.href = 'login.html';
+    return;
+   }
+
+   if (!response.ok || !result.success) {
+    throw new Error(result.message || 'Gagal mengambil pesanan.');
+   }
+
+   const orders = Array.isArray(result.data)
+    ? result.data
+    : [];
+
+   if (countElement) {
+    countElement.textContent = orders.length;
+   }
+
+  } catch (error) {
+   console.error('Gagal memuat jumlah pesanan:', error);
+
+   if (countElement) {
+    countElement.textContent = '-';
+   }
+  }
+ })();
  // Proses update profil
  document.querySelector('#profileForm').onsubmit=async e=>{
   e.preventDefault()
@@ -716,291 +1350,1544 @@ function cartPage(){
  render();updateCartCount()
 }
 
+
 function checkoutPage(){
  const u=currentUser()
- document.querySelector('#app').innerHTML=`${nav()}<main class="inner-page"><div class="page-intro compact"><span class="eyebrow">Pembayaran</span><h1>Lengkapi pesanan kamu.</h1><p>Pilih apakah kamu makan di tempat atau memesan untuk diantar.</p></div><div id="checkoutRoot"></div></main>${footer()}`
+
+ document.querySelector('#app').innerHTML=`
+ ${nav()}
+ <main class="inner-page">
+  <div class="page-intro compact">
+   <span class="eyebrow">Pembayaran</span>
+   <h1>Lengkapi pesanan kamu.</h1>
+   <p>Pilih apakah kamu makan di tempat atau memesan untuk diantar.</p>
+  </div>
+  <div id="checkoutRoot"></div>
+ </main>
+ ${footer()}`
+
  const render=()=>{
-  const c=getCart(),sub=c.reduce((s,x)=>s+x.price*x.qty,0),del=sub>=150000||!c.length?0:15000
-  document.querySelector('#checkoutRoot').innerHTML=!u?`<div class="empty-state"><h2>Silakan masuk terlebih dahulu</h2><p>Kamu perlu akun customer untuk membuat pesanan.</p><a class="btn primary" href="login.html">Masuk</a></div>`:!c.length?`<div class="empty-state"><h2>Keranjang masih kosong</h2><a class="btn primary" href="menu.html">Lihat Menu</a></div>`:`<div class="checkout-layout"><section class="checkout-card"><h2>Jenis pesanan</h2><form id="checkoutForm"><label class="payment"><input type="radio" name="orderType" value="Dine In" checked><span><b>Makan di tempat</b><small>Gunakan meja di restoran. Pembayaran hanya COD.</small></span></label><label class="payment"><input type="radio" name="orderType" value="Online"><span><b>Pemesanan online</b><small>Pesanan diantar ke alamat kamu. Pilih Transfer Bank atau GoPay.</small></span></label><div id="dynamicCheckout"><label>No. meja<input id="tableNumber" required placeholder="Contoh: A12"></label><h2>Data pelanggan</h2><label>Nama<input id="coNama" value="${escapeHtml(u.name)}" required></label><label>No. HP<input id="coPhone" value="${escapeHtml(u.phone)}" required></label><h2>Metode pembayaran</h2><div id="paymentOptions"></div><button class="btn primary full" type="submit">Buat Pesanan</button></div></form><div id="checkoutMsg"></div></section><aside class="summary"><h3>Ringkasan pesanan</h3>${c.map(x=>`<div class="sum-item"><span>${x.name} × ${x.qty}</span><b>${rupiah(x.price*x.qty)}</b></div>`).join('')}<hr><div><span>Ongkir</span><b id="deliveryCost">${rupiah(del)}</b></div><div class="total"><span>Total</span><b id="checkoutTotal">${rupiah(sub+del)}</b></div></aside></div>`
+  const c=getCart()
+  const sub=c.reduce((s,x)=>s+x.price*x.qty,0)
+  const del=sub>=150000||!c.length?0:15000
+
+  document.querySelector('#checkoutRoot').innerHTML=
+   !u
+   ? `<div class="empty-state">
+       <h2>Silakan masuk terlebih dahulu</h2>
+       <a class="btn primary" href="login.html">Masuk</a>
+      </div>`
+   : !c.length
+   ? `<div class="empty-state">
+       <h2>Keranjang masih kosong</h2>
+       <a class="btn primary" href="menu.html">Lihat Menu</a>
+      </div>`
+   : `<div class="checkout-layout">
+      <section class="checkout-card">
+       <h2>Jenis pesanan</h2>
+
+       <form id="checkoutForm">
+
+        <label class="payment">
+         <input type="radio" name="orderType" value="Dine In" checked>
+         <span><b>Makan di tempat</b>
+         <small>Pembayaran COD.</small></span>
+        </label>
+
+        <label class="payment">
+         <input type="radio" name="orderType" value="Online">
+         <span><b>Pemesanan online</b>
+         <small>Pesanan diantar ke alamat kamu.</small></span>
+        </label>
+
+        <div id="dynamicCheckout"></div>
+       </form>
+
+       <div id="checkoutMsg"></div>
+      </section>
+
+      <aside class="summary">
+       <h3>Ringkasan pesanan</h3>
+       ${c.map(x=>`
+        <div class="sum-item">
+         <span>${x.name} × ${x.qty}</span>
+         <b>${rupiah(x.price*x.qty)}</b>
+        </div>
+       `).join('')}
+       <hr>
+       <div>
+        <span>Ongkir</span>
+        <b id="deliveryCost">${rupiah(del)}</b>
+       </div>
+       <div class="total">
+        <span>Total</span>
+        <b id="checkoutTotal">${rupiah(sub+del)}</b>
+       </div>
+      </aside>
+     </div>`
+
   const form=document.querySelector('#checkoutForm')
   if(!form)return
-  const renderType=()=>{
-   const type=document.querySelector('input[name="orderType"]:checked').value
-   const dyn=document.querySelector('#dynamicCheckout')
-   const currentName=document.querySelector('#coNama')?.value||u.name,currentPhone=document.querySelector('#coPhone')?.value||u.phone
-   const delivery=type==='Online'
-   dyn.innerHTML=`${delivery?`<h2>Data pengantaran</h2>`:`<h2>Data pelanggan</h2>`}<label>Nama<input id="coNama" value="${escapeHtml(currentName)}" required></label><label>No. HP<input id="coPhone" value="${escapeHtml(currentPhone)}" required></label>${delivery?`<label>Alamat pengantaran<textarea id="coAddress" rows="3" required>${escapeHtml(u.address||'')}</textarea></label>`:`<label>No. meja<input id="tableNumber" required placeholder="Contoh: A12"></label>`}<h2>Metode pembayaran</h2>${delivery?`<label class="payment"><input type="radio" name="pay" value="Transfer Bank" checked><span><b>Transfer Bank</b><small>BCA 1234567890 · a.n. Makanin</small></span></label><label class="payment"><input type="radio" name="pay" value="GoPay"><span><b>GoPay</b><small>Nomor GoPay: 0812 3456 7890</small></span></label><label class="payment-confirm"><input id="paidConfirm" type="checkbox" required><span>Saya sudah menyelesaikan pembayaran.</span></label>`:`<label class="payment"><input type="radio" name="pay" value="COD" checked><span><b>COD / Bayar di tempat</b><small>Pembayaran dilakukan saat makan di restoran.</small></span></label>`}<button class="btn primary full" type="submit">Konfirmasi & Buat Pesanan</button>`
-   const d=document.querySelector('#deliveryCost'),t=document.querySelector('#checkoutTotal')
-   const sub=c.reduce((s,x)=>s+x.price*x.qty,0),del=delivery?(sub>=150000?0:15000):0
-   if(d)d.textContent=del?rupiah(del):'Gratis'
-   if(t)t.textContent=rupiah(sub+del)
-  }
-  form.addEventListener('change',e=>{if(e.target.name==='orderType')renderType()})
-  renderType()
-  form.onsubmit=e=>{
-   e.preventDefault()
-   const type=document.querySelector('input[name="orderType"]:checked').value
-   const payment=document.querySelector('input[name="pay"]:checked').value
-   const name=document.querySelector('#coNama').value.trim(),phone=document.querySelector('#coPhone').value.trim()
-   const online=type==='Online'
-   const address=online?document.querySelector('#coAddress').value.trim():''
-   const table=online?'':document.querySelector('#tableNumber').value.trim()
-   if(!name||!phone||(online&&!address)||(!online&&!table)){document.querySelector('#checkoutMsg').innerHTML='<div class="message error">Lengkapi data pesanan terlebih dahulu.</div>';return}
-   if(!/^[0-9]{10,13}$/.test(phone)){
- document.querySelector('#checkoutMsg').innerHTML=
- '<div class="message error">Nomor HP harus 10–13 digit.</div>'
- return
-}
 
-if(!online && !table){
- document.querySelector('#checkoutMsg').innerHTML=
- '<div class="message error">Nomor meja wajib diisi untuk makan di tempat.</div>'
- return
-}
-   if(online&&!document.querySelector('#paidConfirm')?.checked){document.querySelector('#checkoutMsg').innerHTML='<div class="message error">Konfirmasi pembayaran terlebih dahulu agar pesanan dapat dibuat.</div>';return}
-   const sub=c.reduce((s,x)=>s+x.price*x.qty,0),del=online?(sub>=150000?0:15000):0
-   const order={id:'MK-'+Date.now().toString().slice(-6),customerId:u.id,orderType:type,customer:{name,phone,address:address||u.address||'',email:u.email},tableNumber:table,items:c.map(x=>({id:x.id,name:x.name,category:x.category,price:x.price,qty:x.qty,img:x.img})),subtotal:sub,delivery:del,total:sub+del,payment,paid:online,paymentStatus:online?'Sudah Dibayar':'Belum Dibayar',status:'Pesanan sedang dibuat',date:new Date().toLocaleString('id-ID')}
-   const orders=getPesanan();orders.unshift(order);localStorage.setItem('makanin_orders',JSON.stringify(orders));setCart([])
-   document.querySelector('#checkoutMsg').innerHTML=`<div class="message success">Pesanan <b>${order.id}</b> berhasil dibuat. ${online?'Pembayaran terverifikasi.':'Pesanan makan di tempat sudah tercatat.'}</div>`
-   setTimeout(()=>location.href='orders.html',900)
+  const renderType=()=>{
+   const type=document.querySelector(
+    'input[name="orderType"]:checked'
+   ).value
+
+   const delivery=type==='Online'
+
+   const name=document.querySelector('#coNama')?.value||u.name
+   const phone=document.querySelector('#coPhone')?.value||u.phone
+
+   document.querySelector('#dynamicCheckout').innerHTML=`
+    <h2>${delivery?'Data pengantaran':'Data pelanggan'}</h2>
+
+    <label>Nama
+     <input id="coNama" value="${escapeHtml(name)}" required>
+    </label>
+
+    <label>No. HP
+     <input id="coPhone" value="${escapeHtml(phone)}" required>
+    </label>
+
+    ${delivery?`
+     <label>Alamat pengantaran
+      <textarea id="coAddress" rows="3" required>${escapeHtml(u.address||'')}</textarea>
+     </label>
+    `:`
+     <label>No. meja
+      <input id="tableNumber" required placeholder="Contoh: A12">
+     </label>
+    `}
+
+    <h2>Metode pembayaran</h2>
+
+    ${delivery?`
+     <label class="payment">
+      <input type="radio" name="pay" value="Transfer Bank" checked>
+      <span><b>Transfer Bank</b>
+      <small>BCA 1234567890 · a.n. Makanin</small></span>
+     </label>
+
+     <label class="payment">
+      <input type="radio" name="pay" value="GoPay">
+      <span><b>GoPay</b>
+      <small>Nomor GoPay: 0812 3456 7890</small></span>
+     </label>
+
+     <label class="payment-confirm">
+      <input id="paidConfirm" type="checkbox" required>
+      <span>Saya sudah menyelesaikan pembayaran.</span>
+     </label>
+    `:`
+     <label class="payment">
+      <input type="radio" name="pay" value="COD" checked>
+      <span><b>COD / Bayar di tempat</b>
+      <small>Pembayaran dilakukan di restoran.</small></span>
+     </label>
+    `}
+
+    <button class="btn primary full" type="submit">
+     Konfirmasi & Buat Pesanan
+    </button>
+   `
+
+   const sub=c.reduce((s,x)=>s+x.price*x.qty,0)
+   const fee=delivery&&sub<150000?15000:0
+
+   document.querySelector('#deliveryCost').textContent=
+    fee?rupiah(fee):'Gratis'
+
+   document.querySelector('#checkoutTotal').textContent=
+    rupiah(sub+fee)
+  }
+
+  form.addEventListener('change',e=>{
+   if(e.target.name==='orderType')renderType()
+  })
+
+  renderType()
+
+  form.onsubmit=async e=>{
+   e.preventDefault()
+
+   const type=document.querySelector(
+    'input[name="orderType"]:checked'
+   ).value
+
+   const payment=document.querySelector(
+    'input[name="pay"]:checked'
+   ).value
+
+   const name=document.querySelector('#coNama').value.trim()
+   const phone=document.querySelector('#coPhone').value.trim()
+
+   const online=type==='Online'
+
+   const address=online
+    ?document.querySelector('#coAddress').value.trim()
+    :''
+
+   const table=online
+    ?''
+    :document.querySelector('#tableNumber').value.trim()
+
+   const msg=document.querySelector('#checkoutMsg')
+   const button=form.querySelector('button[type="submit"]')
+
+   if(!name||!phone||(online&&!address)||(!online&&!table)){
+    msg.innerHTML='<div class="message error">Lengkapi data pesanan terlebih dahulu.</div>'
+    return
+   }
+
+   if(!/^[0-9]{10,13}$/.test(phone)){
+    msg.innerHTML='<div class="message error">Nomor HP harus 10–13 digit.</div>'
+    return
+   }
+
+   if(online&&!document.querySelector('#paidConfirm')?.checked){
+    msg.innerHTML='<div class="message error">Konfirmasi pembayaran terlebih dahulu.</div>'
+    return
+   }
+
+   button.disabled=true
+   button.textContent='Menyimpan pesanan...'
+
+   try{
+    const response=await fetch('/api/orders',{
+     method:'POST',
+     headers:{
+      'Content-Type':'application/json'
+     },
+     credentials:'same-origin',
+     body:JSON.stringify({
+      orderType:type,
+      payment,
+      name,
+      phone,
+      address,
+      tableNumber:table,
+      items:c.map(x=>({
+       id:Number(x.id),
+       qty:Number(x.qty)
+      }))
+     })
+    })
+
+    const result=await response.json()
+
+    if(!response.ok||!result.success){
+     throw new Error(result.message||'Gagal membuat pesanan.')
+    }
+
+    setCart([])
+
+    msg.innerHTML=`
+     <div class="message success">
+      Pesanan <b>${escapeHtml(result.data.orderCode)}</b>
+      berhasil disimpan ke database!
+     </div>
+    `
+
+    setTimeout(()=>{
+     location.href='orders.html'
+    },1000)
+
+   }catch(error){
+    msg.innerHTML=`
+     <div class="message error">
+      ${escapeHtml(error.message)}
+     </div>
+    `
+   }finally{
+    button.disabled=false
+    button.textContent='Konfirmasi & Buat Pesanan'
+   }
   }
  }
+
  render()
 }
 
-function ordersPage(){
- const u=currentUser(),orders=u?getPesanan().filter(o=>o.customerId===u.id):[]
- document.querySelector('#app').innerHTML=`${nav()}<main class="inner-page"><div class="page-intro compact"><span class="eyebrow">Area pelanggan</span><h1>Pesanan saya</h1><p>Lihat dan pantau pesanan Makanin kamu.</p></div>${!u?`<div class="empty-state"><h2>Silakan masuk</h2><a class="btn primary" href="login.html">Masuk</a></div>`:!orders.length?`<div class="empty-state"><h2>Belum ada pesanan</h2><p>Menu favorit kamu sudah menunggu.</p><a class="btn primary" href="menu.html">Lihat Menu</a></div>`:orders.map(o=>`<article class="order-card"><div class="order-top"><div><span class="order-id">${o.id}</span><small>${o.date}</small></div><span class="order-status">${o.status}</span></div><div class="order-type-label">${o.orderType==='Online'?'Pemesanan online':'Makan di tempat'}${o.tableNumber?` · Meja ${o.tableNumber}`:''}</div>${o.items.map(i=>`<div class="order-item"><img src="${i.img}" alt="${i.name}"><span>${i.name} × ${i.qty}</span><b>${rupiah(i.price*i.qty)}</b></div>`).join('')}<div class="order-bottom"><span>${o.payment} · <b class="${o.paid?'paid':'unpaid'}">${o.paymentStatus}</b></span><b>${rupiah(o.total)}</b></div>${o.orderType==='Online'?`<div class="delivery-detail"><b>Alamat pengantaran</b><span>${o.customer.name} · ${o.customer.phone}</span><span>${o.customer.address}</span></div>`:`<div class="delivery-detail"><b>Pesanan makan di tempat</b><span>Meja ${o.tableNumber}</span><span>Pembayaran COD dilakukan di restoran.</span></div>`}</article>`).join('')}</main>${footer()}`
+
+async function ordersPage() {
+  const u = currentUser();
+
+  document.querySelector('#app').innerHTML = `
+    ${nav()}
+    <main class="inner-page">
+      <div class="page-intro compact">
+        <span class="eyebrow">Area pelanggan</span>
+        <h1>Pesanan saya</h1>
+        <p>Lihat dan pantau pesanan Makanin kamu.</p>
+      </div>
+
+      <div id="ordersRoot">
+        <div class="no-data">Memuat pesanan...</div>
+      </div>
+    </main>
+    ${footer()}
+  `;
+
+  const root = document.querySelector('#ordersRoot');
+
+  if (!u) {
+    root.innerHTML = `
+      <div class="empty-state">
+        <h2>Silakan masuk terlebih dahulu.</h2>
+        <a class="btn primary" href="login.html">Masuk</a>
+      </div>`;
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/orders', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Gagal mengambil pesanan.');
+    }
+
+    const orders = result.data || [];
+
+    if (!orders.length) {
+      root.innerHTML = `
+        <div class="empty-state">
+          <h2>Belum ada pesanan.</h2>
+          <a class="btn primary" href="menu.html">Lihat Menu</a>
+        </div>`;
+      return;
+    }
+
+    const statusLabels = {
+      PENDING_CONFIRMATION: 'Menunggu konfirmasi',
+      PROCESSING: 'Sedang diproses',
+      PREPARING: 'Sedang disiapkan',
+      OUT_FOR_DELIVERY: 'Sedang diantar',
+      COMPLETED: 'Pesanan selesai',
+      CANCELLED: 'Dibatalkan'
+    };
+
+    const paymentLabels = {
+      CASH: 'COD / Bayar di tempat',
+      BANK_TRANSFER: 'Transfer Bank',
+      GOPAY: 'GoPay',
+      QRIS: 'QRIS',
+      CARD: 'Kartu',
+      PENDING: 'Belum Dibayar',
+      PAID: 'Sudah Dibayar',
+      FAILED: 'Gagal',
+      REFUNDED: 'Dikembalikan'
+    };
+
+    root.innerHTML = orders.map(o => `
+      <article class="order-card">
+
+        <div class="order-top">
+          <div>
+            <span class="order-id">
+              ${escapeHtml(o.orderCode)}
+            </span>
+            <small>
+              ${new Date(o.createdAt).toLocaleString('id-ID')}
+            </small>
+          </div>
+
+          <span class="order-status">
+            ${statusLabels[o.status] || escapeHtml(o.status)}
+          </span>
+        </div>
+
+        <div class="order-type-label">
+          ${o.orderType === 'DELIVERY'
+            ? 'Pemesanan online'
+            : 'Makan di tempat'}
+          ${o.tableNumber
+            ? ' · Meja ' + escapeHtml(o.tableNumber)
+            : ''}
+        </div>
+
+        ${(o.items || []).map(i => `
+          <div class="order-item">
+            <img
+              src="${escapeHtml(i.imageUrl || '')}"
+              alt="${escapeHtml(i.foodName)}"
+            >
+
+            <span>
+              ${escapeHtml(i.foodName)} × ${i.quantity}
+            </span>
+
+            <b>${rupiah(i.lineTotal)}</b>
+          </div>
+        `).join('')}
+
+        <div class="order-bottom">
+          <span>
+            ${paymentLabels[o.payment?.method] || 'Pembayaran'}
+            ·
+            <b class="${o.payment?.status === 'PAID' ? 'paid' : 'unpaid'}">
+              ${paymentLabels[o.payment?.status] || 'Belum Dibayar'}
+            </b>
+          </span>
+
+          <b>${rupiah(o.total)}</b>
+        </div>
+
+        ${o.orderType === 'DELIVERY' ? `
+          <div class="delivery-detail">
+            <b>Alamat pengantaran</b>
+            <span>${escapeHtml(o.customerName)}</span>
+            <span>${escapeHtml(o.customerPhone)}</span>
+            <span>${escapeHtml(o.deliveryAddress || '')}</span>
+          </div>
+        ` : `
+          <div class="delivery-detail">
+            <b>Pesanan makan di tempat</b>
+            <span>Meja ${escapeHtml(o.tableNumber || '-')}</span>
+          </div>
+        `}
+
+      </article>
+    `).join('');
+
+  } catch (error) {
+    root.innerHTML = `
+      <div class="message error">
+        ${escapeHtml(error.message)}
+      </div>`;
+  }
 }
 
-async function adminPage(){
 
- // Periksa session dan role ADMIN melalui backend
- let adminUser
+async function adminPage() {
 
- try{
+  // PENGECEKAN LOGIN ADMIN
+  let adminUser;
 
-  const response=await fetch('/api/admin/test',{
-   method:'GET',
-   credentials:'same-origin',
-   cache:'no-store'
-  })
+  try {
+    const response = await fetch('/api/admin/test', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
 
-  const result=await response.json()
+    const result = await response.json();
 
-  if(
-   !response.ok ||
-   !result.success ||
-   result.data?.role!=='ADMIN'
-  ){
-   location.href='admin-login.html'
-   return
+    if (
+      !response.ok ||
+      !result.success ||
+      result.data?.role !== 'ADMIN'
+    ) {
+      location.href = 'admin-login.html';
+      return;
+    }
+
+    adminUser = result.data;
+
+  } catch (error) {
+    console.error('Admin authentication error:', error);
+    location.href = 'admin-login.html';
+    return;
   }
 
-  adminUser=result.data
+  const statusList = [
+  'Pesanan sedang dibuat',
+  'Sedang diproses',
+  'Sedang disiapkan',
+  'Sedang diantar',
+  'Pesanan selesai',
+  'Dibatalkan'
+];
 
- }catch(error){
+  const safe = v => escapeHtml(v ?? '—');
 
-  console.error('Admin authentication error:',error)
-  location.href='admin-login.html'
-  return
+  let latestCategories = [];
+  let latestFoods = [];
 
- }
+  // AMBIL DATA PESANAN DAN PELANGGAN DARI PRISMA
+const getData = async () => {
 
- const statusList=['Pesanan sedang dibuat','Sedang diproses','Sedang diantar','Pesanan selesai','Dibatalkan']
+  const [ordersResult, usersResult] = await Promise.all([
+    sendApi('/api/orders', 'GET'),
+    sendApi('/api/admin/customers', 'GET')
+  ]);
 
- const categories=['Nasi','Mie','Ayam','Pizza & Burger','Dessert','Minuman']
- const safe=v=>escapeHtml(v??'—')
- const syncUsers=()=>{
-  const raw=getUsers(),orders=getPesanan(),byEmail=new Map(raw.map(u=>[String(u.email).toLowerCase(),u]))
-  orders.forEach(o=>{
-   const c=o?.customer||{},email=String(c.email||'').trim().toLowerCase()
-   if(email&&!byEmail.has(email)) byEmail.set(email,{id:o.customerId||Date.now()+Math.random(),name:c.name||'Pelanggan Makanin',phone:c.phone||'',address:c.address||'',email,password:''})
-  })
-  return [...byEmail.values()].map(u=>{
-   const related=orders.filter(o=>o.customerId===u.id||String(o?.customer?.email||'').toLowerCase()===String(u.email).toLowerCase())
-   const latest=related[0]?.customer||{}
-   return {...u,name:u.name||latest.name||'Pelanggan Makanin',phone:u.phone||latest.phone||'',address:u.address||latest.address||''}
-  })
- }
- const getData=()=>({orders:getPesanan().filter(Boolean),users:syncUsers(),foods:getFoods()})
- const getTab=()=>{
-  const hash=(location.hash||'#dashboard').slice(1)
-  return ['dashboard','online','dinein','customers','menu','reports'].includes(hash)?hash:'dashboard'
- }
- const render=()=>{
-  const tab=getTab(),{orders,users,foods:foodsNow}=getData()
-  const onlineOrders=orders.filter(o=>o.orderType==='Online')
-  const dineinOrders=orders.filter(o=>o.orderType==='Dine In'||o.orderType==='Makan di tempat')
-  const paidRevenue=orders.filter(o=>o.paid===true||o.paymentStatus==='Sudah Dibayar').reduce((s,o)=>s+Number(o.total||0),0)
-  const statusCount=x=>orders.filter(o=>(o.status||'Pesanan sedang dibuat')===x).length
-  const pendingOrders=orders.filter(o=>(o.status||'Pesanan sedang dibuat')==='Pesanan sedang dibuat').length
-  const items=o=>Array.isArray(o.items)&&o.items.length?o.items.map(i=>`${safe(i.name)} × ${Number(i.qty||0)}`).join(', '):'—'
-  const orderCard=o=>{
-   const c=o.customer||{},online=o.orderType==='Online',status=statusList.includes(o.status)?o.status:'Pesanan sedang dibuat'
-   return `<article class="admin-order-card" data-order-card="${safe(o.id)}">
-    <div class="admin-order-top"><div><span class="order-id">${safe(o.id)}</span><small>${safe(o.date)}</small></div><span class="table-status ${o.paid||o.paymentStatus==='Sudah Dibayar'?'paid':'unpaid'}">${safe(o.paymentStatus||'Belum Dibayar')}</span></div>
-    <div class="admin-order-grid">
-     <div><span class="admin-label">Pelanggan</span><b>${safe(c.name||'Pelanggan Makanin')}</b><small>${safe(c.email)}</small></div>
-     <div><span class="admin-label">No. HP</span><b>${safe(c.phone||'Belum diisi')}</b></div>
-     <div><span class="admin-label">${online?'Alamat pengantaran':'Meja restoran'}</span><b>${online?safe(c.address||'Alamat belum diisi'):safe(o.tableNumber?`Meja ${o.tableNumber}`:'Meja belum diisi')}</b></div>
-     <div class="wide"><span class="admin-label">Menu dipesan</span><b>${items(o)}</b></div>
-     <div><span class="admin-label">Pembayaran</span><b>${safe(o.payment||'—')}</b></div>
-     <div><span class="admin-label">Total</span><b>${rupiah(Number(o.total||0))}</b></div>
-    </div>
-    <div class="admin-order-actions single-status-control">
-      <label>Status pesanan<select data-status-id="${safe(o.id)}">${statusList.map(x=>`<option value="${safe(x)}" ${x===status?'selected':''}>${safe(x)}</option>`).join('')}</select></label>
-      ${!o.paid?`<button type="button" class="admin-paid-btn" data-paid-id="${safe(o.id)}">Tandai sudah dibayar</button>`:'<span class="paid-note">✓ Pembayaran terverifikasi</span>'}
-    </div>
-   </article>`
-  }
-  const menuCard=f=>`<article class="admin-menu-card"><img src="${safe(f.img)}" alt="${safe(f.name)}" onerror="this.src='${IMG.restaurant}'"><div class="admin-menu-body"><span>${safe(f.category)}</span><h3>${safe(f.name)}</h3><p>${safe(f.description||'Menu pilihan Makanin yang disiapkan segar.')}</p><b>${rupiah(Number(f.price||0))}</b><small>Stok: ${Number(f.stock??20)}</small><div class="admin-crud-actions"><button type="button" data-edit-food="${safe(f.id)}">Edit</button><button type="button" data-delete-food="${safe(f.id)}" class="danger">Hapus</button></div></div></article>`
-  const orderSection=(title,list,empty)=>`<section class="admin-panel active-panel"><div class="admin-section-head"><div><h2>${title}</h2><p class="admin-help">Status pesanan diperbarui langsung melalui satu dropdown.</p></div><span>${list.length} pesanan</span></div><div class="admin-order-list">${list.length?list.map(orderCard).join(''):`<div class="no-data">${empty}</div>`}</div></section>`
-  const menuSections=categories.map(cat=>{const list=foodsNow.filter(f=>f.category===cat);return `<section class="admin-menu-category"><div class="admin-menu-category-head"><div><span class="eyebrow">Kategori</span><h3>${cat}</h3></div><span>${list.length} menu</span></div><div class="admin-menu-grid">${list.length?list.map(menuCard).join(''):'<div class="no-data">Belum ada menu pada kategori ini.</div>'}</div></section>`}).join('')
-  document.querySelector('#app').innerHTML=`<div class="admin-layout"><aside class="admin-side">
-   <a class="admin-logo" href="admin.html#dashboard">Makan<span>in</span><small>RESTAURANT ADMIN</small></a>
-   <button type="button" class="side ${tab==='dashboard'?'active':''}" data-tab="dashboard">Dashboard</button>
-   <button type="button" class="side ${tab==='online'?'active':''}" data-tab="online">Pesanan Online</button>
-   <button type="button" class="side ${tab==='dinein'?'active':''}" data-tab="dinein">Pesanan Dine-in</button>
-   <button type="button" class="side ${tab==='customers'?'active':''}" data-tab="customers">Pelanggan</button>
-   <button type="button" class="side ${tab==='menu'?'active':''}" data-tab="menu">Menu</button>
-   <button type="button" class="side ${tab==='reports'?'active':''}" data-tab="reports">Laporan</button>
-  <div class="admin-side-user">
-  <span>Login sebagai</span>
-  <b>${safe(adminUser.email)}</b>
-  </div><button type="button" class="side logout" id="logout">Keluar</button>
-  </aside><main class="admin-main"><header class="admin-head"><div><span class="eyebrow">Manajemen Makanin</span><h1>${tab==='dashboard'?'Selamat datang, Admin.':tab==='online'?'Pesanan Online':tab==='dinein'?'Pesanan Dine-in':tab==='customers'?'Data Pelanggan':tab==='menu'?'Kelola Menu':'Laporan Penjualan'}</h1><p>Admin mengelola menu, pelanggan, pesanan, pembayaran, dan laporan restoran.</p></div><span class="admin-pill">Admin</span></header>
-   ${tab==='dashboard'?`<section class="admin-panel active-panel"><div class="admin-stats"><div><small>Total Pesanan</small><b>${orders.length}</b></div><div><small>Pesanan Baru</small><b>${pendingOrders}</b></div><div><small>Pelanggan</small><b>${users.length}</b></div><div><small>Menu</small><b>${foodsNow.length}</b></div><div><small>Penjualan Dibayar</small><b>${rupiah(paidRevenue)}</b></div></div><div class="status-overview"><div><span>Dibuat</span><b>${statusCount('Pesanan sedang dibuat')}</b></div><div><span>Diproses</span><b>${statusCount('Sedang diproses')}</b></div><div><span>Diantar</span><b>${statusCount('Sedang diantar')}</b></div><div><span>Selesai</span><b>${statusCount('Pesanan selesai')}</b></div></div><div class="admin-section"><div class="admin-section-head"><h2>Pesanan terbaru</h2><div class="dashboard-order-links"><button type="button" class="admin-link" data-tab="online">Lihat pesanan online</button><button type="button" class="admin-link" data-tab="dinein">Lihat pesanan dine-in</button></div></div><div class="admin-order-list">${orders.length?orders.slice(0,5).map(orderCard).join(''):'<div class="no-data">Belum ada pesanan.</div>'}</div></div></section>`:''}
-   ${tab==='online'?orderSection('Pesanan Online',onlineOrders,'Belum ada pesanan online.') :''}
-   ${tab==='dinein'?orderSection('Pesanan Dine-in / Makan di Tempat',dineinOrders,'Belum ada pesanan dine-in.') :''}
-   ${tab==='customers'?`<section class="admin-panel active-panel"><div class="admin-section-head"><div><h2>Data pelanggan</h2><p class="admin-help">Data akun customer yang sudah terdaftar dan terhubung dengan pesanan.</p></div><span>${users.length} pelanggan</span></div><div class="admin-cards customer-admin-grid">${users.length?users.map(x=>{const n=orders.filter(o=>o.customerId===x.id||String(o?.customer?.email||'').toLowerCase()===String(x.email).toLowerCase()).length;return `<article><div class="avatar">${safe((x.name||'P').charAt(0).toUpperCase())}</div><div><h3>${safe(x.name)}</h3><p>Email: <b>${safe(x.email)}</b></p><p>No. HP: <b>${safe(x.phone||'Belum diisi')}</b></p><p>Alamat: ${safe(x.address||'Belum diisi')}</p><small>${n} pesanan</small></div></article>`}).join(''):'<div class="no-data">Belum ada pelanggan.</div>'}</div></section>`:''}
-   ${tab==='menu'?`<section class="admin-panel active-panel"><div class="admin-section-head"><div><h2>Manajemen menu</h2><p class="admin-help">Menu dipisahkan berdasarkan kategori. Tambah, edit, hapus, atur harga, gambar, deskripsi, dan stok.</p></div><button type="button" class="btn primary admin-add-food" id="addFood">+ Tambah Menu</button></div>${menuSections}</section>`:''}
-   ${tab==='reports'?`<section class="admin-panel active-panel"><div class="admin-stats"><div><small>Omzet dibayar</small><b>${rupiah(paidRevenue)}</b></div><div><small>Pesanan selesai</small><b>${statusCount('Pesanan selesai')}</b></div><div><small>Online</small><b>${onlineOrders.length}</b></div><div><small>Dine-in</small><b>${dineinOrders.length}</b></div></div><div class="admin-section"><div class="admin-section-head"><h2>Ringkasan penjualan</h2></div><div class="report-table"><div><span>Total transaksi</span><b>${orders.length}</b></div><div><span>Sudah dibayar</span><b>${orders.filter(o=>o.paid||o.paymentStatus==='Sudah Dibayar').length}</b></div><div><span>Belum dibayar</span><b>${orders.filter(o=>!(o.paid||o.paymentStatus==='Sudah Dibayar')).length}</b></div><div><span>Nilai seluruh pesanan</span><b>${rupiah(orders.reduce((s,o)=>s+Number(o.total||0),0))}</b></div></div></div></section>`:''}
-  </main></div><div id="foodModal"></div>`
+  const statusLabels = {
+    PENDING_CONFIRMATION: 'Pesanan sedang dibuat',
+    PROCESSING: 'Sedang diproses',
+    PREPARING: 'Sedang diproses',
+    OUT_FOR_DELIVERY: 'Sedang diantar',
+    COMPLETED: 'Pesanan selesai',
+    CANCELLED: 'Dibatalkan'
+  };
 
-  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.dataset.tab}))
-  document.querySelector('#logout').onclick=async()=>{
+  const paymentLabels = {
+    CASH: 'COD',
+    BANK_TRANSFER: 'Transfer Bank',
+    GOPAY: 'GoPay',
+    QRIS: 'QRIS',
+    CARD: 'Kartu'
+  };
 
- const button=document.querySelector('#logout')
- button.disabled=true
+  const orders = (ordersResult.data || []).map(o => ({
+    id: o.id,
+    orderCode: o.orderCode,
 
- try{
+    date: new Date(o.createdAt).toLocaleString('id-ID'),
 
-  const response=await fetch('/api/auth/logout',{
-   method:'POST',
-   credentials:'same-origin'
-  })
+    orderType:
+      o.orderType === 'DELIVERY'
+        ? 'Online'
+        : 'Dine In',
 
-  const result=await response.json()
+    status:
+      statusLabels[o.status] || 'Pesanan sedang dibuat',
 
-  if(!response.ok || !result.success){
-   throw new Error(result.message || 'Logout gagal.')
-  }
+    customer: {
+      name: o.customerName,
+      email: o.customerEmail,
+      phone: o.customerPhone,
+      address: o.deliveryAddress || ''
+    },
 
-  location.href='admin-login.html'
+    tableNumber: o.tableNumber,
 
- }catch(error){
+    items: (o.items || []).map(i => ({
+      id: i.foodId,
+      name: i.foodName,
+      qty: i.quantity,
+      price: i.unitPrice,
+      img: i.imageUrl
+    })),
 
-  alert(error.message)
-  button.disabled=false
+    subtotal: o.subtotal,
+    total: o.total,
 
- }
-}
-  document.querySelectorAll('[data-status-id]').forEach(sel=>sel.addEventListener('change',()=>{
-   const list=getPesanan()
-   const o=list.find(x=>String(x.id)===String(sel.dataset.statusId))
+    payment:
+      paymentLabels[o.payment?.method] || '-',
 
-   if(!o)return
+    paid: o.payment?.status === 'PAID',
 
-   const validStatuses=[
-     'Pesanan sedang dibuat',
-     'Sedang diproses',
-     'Sedang diantar',
-     'Pesanan selesai',
-     'Dibatalkan'
-   ]
+    paymentStatus:
+      o.payment?.status === 'PAID'
+        ? 'Sudah Dibayar'
+        : 'Belum Dibayar'
+  }));
 
-   if(!validStatuses.includes(sel.value)){
-     alert('Status pesanan tidak valid.')
-     render()
-     return
-   }
+  return {
+    orders,
+    users: usersResult.data || []
+  };
+};
 
-   o.status=sel.value
+  const getTab = () => {
+    const hash = (location.hash || '#dashboard').slice(1);
 
-   localStorage.setItem('makanin_orders',JSON.stringify(list))
+    return [
+      'dashboard',
+      'online',
+      'dinein',
+      'customers',
+      'menu',
+      'reports'
+    ].includes(hash) ? hash : 'dashboard';
+  };
 
-   render()
-}))
-  document.querySelectorAll('[data-paid-id]').forEach(btn=>btn.addEventListener('click',()=>{
-   const list=getPesanan(),o=list.find(x=>String(x.id)===String(btn.dataset.paidId));
-   if(!o)return;o.paid=true;o.paymentStatus='Sudah Dibayar';localStorage.setItem('makanin_orders',JSON.stringify(list));render()
-  }))
-  document.querySelector('#addFood')?.addEventListener('click',()=>openFoodModal())
-  document.querySelectorAll('[data-edit-food]').forEach(b=>b.addEventListener('click',()=>{const f=getFoods().find(x=>String(x.id)===String(b.dataset.editFood));if(f)openFoodModal(f)}))
-  document.querySelectorAll('[data-delete-food]').forEach(b=>b.addEventListener('click',()=>{
-   const id=String(b.dataset.deleteFood),f=getFoods().find(x=>String(x.id)===id);if(!f)return;
-   if(!confirm(`Hapus menu "${f.name}" dari katalog Makanin?`))return;
-   const list=getFoods().filter(x=>String(x.id)!==id);setFoods(list);localStorage.setItem('makanin_foods_version',String(Date.now()));render()
-  }))
- }
- const openFoodModal=f=>{
-  const isEdit=!!f
-  document.querySelector('#foodModal').innerHTML=`<div class="modal-backdrop"><div class="modal admin-food-modal"><button type="button" class="modal-close" id="closeFood">×</button><span class="eyebrow">${isEdit?'Edit Menu':'Tambah Menu'}</span><h2>${isEdit?'Perbarui':'Tambah'} Menu Makanin</h2><form id="foodForm"><label>Nama menu<input id="foodName" required value="${safe(f?.name||'')}"></label><label>Kategori<select id="foodCategory"><option>Nasi</option><option>Mie</option><option>Ayam</option><option>Pizza & Burger</option><option>Dessert</option><option>Minuman</option></select></label><label>Harga<input id="foodPrice" type="number" min="0" required value="${Number(f?.price||0)}"></label><label>Stok<input id="foodStock" type="number" min="0" required value="${Number(f?.stock??20)}"></label><label>URL Gambar<input id="foodImg" type="url" required value="${safe(f?.img||'')}"></label><label>Deskripsi<textarea id="foodDesc" rows="3">${safe(f?.description||'')}</textarea></label><button type="submit" class="btn primary full">${isEdit?'Simpan Perubahan':'Tambah Menu'}</button></form></div></div>`
-  if(f)document.querySelector('#foodCategory').value=f.category
-  document.querySelector('#closeFood').onclick=()=>document.querySelector('#foodModal').innerHTML=''
-  document.querySelector('#foodForm').onsubmit=e=>{
-  e.preventDefault()
+  // FUNGSI REQUEST API
+  const sendApi = async (url, method, data) => {
 
-  const list=getFoods()
+    const response = await fetch(url, {
+      method,
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: data
+        ? { 'Content-Type': 'application/json' }
+        : undefined,
+      body: data ? JSON.stringify(data) : undefined
+    });
 
-  const data={
-    id:isEdit?f.id:Date.now(),
-    name:document.querySelector('#foodName').value.trim(),
-    category:document.querySelector('#foodCategory').value,
-    price:Number(document.querySelector('#foodPrice').value),
-    stock:Number(document.querySelector('#foodStock').value),
-    img:document.querySelector('#foodImg').value.trim(),
-    description:document.querySelector('#foodDesc').value.trim(),
-    rating:f?.rating||5,
-    ulasan:f?.ulasan||[]
-  }
+    let result;
 
-  if(!data.name){
-    alert('Nama menu wajib diisi.')
-    return
-  }
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error('Respons server tidak valid.');
+    }
 
-  if(!data.img){
-    alert('URL gambar menu wajib diisi.')
-    return
-  }
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Permintaan gagal.');
+    }
 
-  if(data.price<=0){
-    alert('Harga menu harus lebih dari 0.')
-    return
-  }
+    return result;
+  };
 
-  if(data.stock<0){
-    alert('Stok menu tidak boleh kurang dari 0.')
-    return
-  }
+  // RENDER DASHBOARD
+  const render = async () => {
 
-  const idx=list.findIndex(x=>String(x.id)===String(data.id))
 
-  if(idx>=0){
-    list[idx]=data
-  }else{
-    list.push(data)
-  }
+const tab = getTab();
 
-  setFoods(list)
-  localStorage.setItem('makanin_foods_version',String(Date.now()))
-  document.querySelector('#foodModal').innerHTML=''
-  render()
-}
- }
- render();window.onhashchange=render
+const [ordersResult, customersResult] = await Promise.all([
+  sendApi('/api/orders', 'GET'),
+  sendApi('/api/admin/customers', 'GET')
+]);
+
+const statusLabels = {
+  PENDING_CONFIRMATION: 'Pesanan sedang dibuat',
+  PROCESSING: 'Sedang diproses',
+  PREPARING: 'Sedang disiapkan',
+  OUT_FOR_DELIVERY: 'Sedang diantar',
+  COMPLETED: 'Pesanan selesai',
+  CANCELLED: 'Dibatalkan'
+};
+
+const methodLabels = {
+  CASH: 'COD / Bayar di tempat',
+  BANK_TRANSFER: 'Transfer Bank',
+  GOPAY: 'GoPay',
+  QRIS: 'QRIS',
+  CARD: 'Kartu'
+};
+
+const paymentLabels = {
+  PENDING: 'Belum Dibayar',
+  PAID: 'Sudah Dibayar',
+  FAILED: 'Gagal',
+  REFUNDED: 'Dikembalikan'
+};
+
+const rawOrders = Array.isArray(ordersResult.data)
+  ? ordersResult.data
+  : [];
+
+const orders = rawOrders.map(o => ({
+  id: o.id,
+  orderCode: o.orderCode,
+  customerId: o.customerId,
+
+  orderType: o.orderType === 'DELIVERY'
+    ? 'Online'
+    : 'Dine In',
+
+  status: statusLabels[o.status] || o.status,
+
+  date: new Date(o.createdAt).toLocaleString('id-ID'),
+
+  customer: {
+    name: o.customerName,
+    email: o.customerEmail,
+    phone: o.customerPhone,
+    address: o.deliveryAddress || ''
+  },
+
+  tableNumber: o.tableNumber,
+
+  items: (o.items || []).map(i => ({
+    name: i.foodName,
+    qty: i.quantity,
+    price: i.unitPrice,
+    img: i.imageUrl
+  })),
+
+  total: o.total,
+
+  payment: methodLabels[o.payment?.method] || '-',
+
+  paid: o.payment?.status === 'PAID',
+
+  paymentStatus:
+    paymentLabels[o.payment?.status] || 'Belum Dibayar'
+}));
+
+const users = Array.isArray(customersResult.data)
+  ? customersResult.data
+  : [];
+
+
+    let foodsNow = [];
+    let categories = [];
+    let catalogError = '';
+
+    try {
+
+      const [foodResponse, categoryResponse] =
+        await Promise.all([
+          fetch('/api/foods', {
+            credentials: 'same-origin',
+            cache: 'no-store'
+          }),
+
+          fetch('/api/categories', {
+            credentials: 'same-origin',
+            cache: 'no-store'
+          })
+        ]);
+
+      const [foodResult, categoryResult] =
+        await Promise.all([
+          foodResponse.json(),
+          categoryResponse.json()
+        ]);
+
+      if (!foodResponse.ok || !foodResult.success) {
+        throw new Error(
+          foodResult.message || 'Gagal mengambil menu.'
+        );
+      }
+
+      if (!categoryResponse.ok || !categoryResult.success) {
+        throw new Error(
+          categoryResult.message || 'Gagal mengambil kategori.'
+        );
+      }
+
+      foodsNow = Array.isArray(foodResult.data)
+        ? foodResult.data
+        : [];
+
+      categories = Array.isArray(categoryResult.data)
+        ? categoryResult.data
+        : [];
+
+      latestFoods = foodsNow;
+      latestCategories = categories;
+
+    } catch (error) {
+
+      console.error('Gagal memuat katalog:', error);
+
+      catalogError = error.message;
+      latestFoods = [];
+      latestCategories = [];
+
+    }
+
+    const onlineOrders = orders.filter(
+      o => o.orderType === 'Online'
+    );
+
+    const dineinOrders = orders.filter(
+      o =>
+        o.orderType === 'Dine In' ||
+        o.orderType === 'Makan di tempat'
+    );
+
+    const paidRevenue = orders
+      .filter(
+        o =>
+          o.paid === true ||
+          o.paymentStatus === 'Sudah Dibayar'
+      )
+      .reduce((s, o) => s + Number(o.total || 0), 0);
+
+    const statusCount = x =>
+      orders.filter(
+        o => (o.status || 'Pesanan sedang dibuat') === x
+      ).length;
+
+    const pendingOrders = statusCount('Pesanan sedang dibuat');
+
+    const items = o =>
+      Array.isArray(o.items) && o.items.length
+        ? o.items.map(
+            i => `${safe(i.name)} × ${Number(i.qty || 0)}`
+          ).join(', ')
+        : '—';
+
+    // KARTU PESANAN
+    const orderCard = o => {
+
+      const c = o.customer || {};
+      const online = o.orderType === 'Online';
+
+      const status = statusList.includes(o.status)
+        ? o.status
+        : 'Pesanan sedang dibuat';
+
+      return `
+        <article class="admin-order-card"
+          data-order-card="${safe(o.id)}">
+
+          <div class="admin-order-top">
+            <div>
+              <span class="order-id">${safe(o.orderCode || o.id)}</span>
+              <small>${safe(o.date)}</small>
+            </div>
+
+            <span class="table-status ${
+              o.paid || o.paymentStatus === 'Sudah Dibayar'
+                ? 'paid'
+                : 'unpaid'
+            }">
+              ${safe(o.paymentStatus || 'Belum Dibayar')}
+            </span>
+          </div>
+
+          <div class="admin-order-grid">
+
+            <div>
+              <span class="admin-label">Pelanggan</span>
+              <b>${safe(c.name || 'Pelanggan Makanin')}</b>
+              <small>${safe(c.email)}</small>
+            </div>
+
+            <div>
+              <span class="admin-label">No. HP</span>
+              <b>${safe(c.phone || 'Belum diisi')}</b>
+            </div>
+
+            <div>
+              <span class="admin-label">
+                ${online ? 'Alamat pengantaran' : 'Meja restoran'}
+              </span>
+              <b>
+                ${online
+                  ? safe(c.address || 'Alamat belum diisi')
+                  : safe(o.tableNumber
+                    ? `Meja ${o.tableNumber}`
+                    : 'Meja belum diisi')}
+              </b>
+            </div>
+
+            <div class="wide">
+              <span class="admin-label">Menu dipesan</span>
+              <b>${items(o)}</b>
+            </div>
+
+            <div>
+              <span class="admin-label">Pembayaran</span>
+              <b>${safe(o.payment || '—')}</b>
+            </div>
+
+            <div>
+              <span class="admin-label">Total</span>
+              <b>${rupiah(Number(o.total || 0))}</b>
+            </div>
+
+          </div>
+
+          <div class="admin-order-actions single-status-control">
+
+            <label>
+              Status pesanan
+              <select data-status-id="${safe(o.id)}">
+                ${statusList.map(x => `
+                  <option value="${safe(x)}"
+                    ${x === status ? 'selected' : ''}>
+                    ${safe(x)}
+                  </option>
+                `).join('')}
+              </select>
+            </label>
+
+            ${
+              !o.paid || o.status === 'Pesanan sedang dibuat'
+                ? `<button type="button"
+                    class="admin-paid-btn"
+                    data-paid-id="${safe(o.id)}">
+                    ${o.paid ? 'Mulai proses pesanan' : 'Tandai sudah dibayar'}
+                  </button>`
+                : '<span class="paid-note">✓ Pembayaran terverifikasi</span>'
+            }
+
+          </div>
+        </article>
+      `;
+    };
+
+    // KARTU MENU DARI DATABASE
+    const menuCard = f => `
+      <article class="admin-menu-card">
+
+        <img
+          src="${safe(f.imageUrl || IMG.restaurant)}"
+          alt="${safe(f.name)}"
+          onerror="this.src='${IMG.restaurant}'"
+        >
+
+        <div class="admin-menu-body">
+
+          <span>${safe(f.category?.name || 'Tanpa Kategori')}</span>
+
+          <h3>${safe(f.name)}</h3>
+
+          <p>${safe(f.description || 'Menu pilihan Makanin.')}</p>
+
+          <b>${rupiah(Number(f.price || 0))}</b>
+
+          <small>Stok: ${Number(f.stock ?? 0)}</small>
+
+          <small>
+            ${f.isAvailable ? 'Tersedia' : 'Tidak tersedia'}
+          </small>
+
+          <div class="admin-crud-actions">
+
+            <button type="button"
+              data-edit-food="${safe(f.id)}">
+              Edit
+            </button>
+
+            <button type="button"
+              data-delete-food="${safe(f.id)}"
+              class="danger">
+              Hapus
+            </button>
+
+          </div>
+
+        </div>
+      </article>
+    `;
+
+    const orderSection = (title, list, empty) => `
+      <section class="admin-panel active-panel">
+
+        <div class="admin-section-head">
+          <div>
+            <h2>${title}</h2>
+            <p class="admin-help">
+              Status pesanan diperbarui melalui dropdown.
+            </p>
+          </div>
+
+          <span>${list.length} pesanan</span>
+        </div>
+
+        <div class="admin-order-list">
+          ${
+            list.length
+              ? list.map(orderCard).join('')
+              : `<div class="no-data">${empty}</div>`
+          }
+        </div>
+
+      </section>
+    `;
+
+    // KELOMPOK MENU BERDASARKAN KATEGORI
+    const menuSections = categories.map(cat => {
+
+      const list = foodsNow.filter(
+        f => Number(f.categoryId) === Number(cat.id)
+      );
+
+      return `
+        <section class="admin-menu-category">
+
+          <div class="admin-menu-category-head">
+            <div>
+              <span class="eyebrow">Kategori</span>
+              <h3>${safe(cat.name)}</h3>
+            </div>
+
+            <span>${list.length} menu</span>
+          </div>
+
+          <div class="admin-menu-grid">
+            ${
+              list.length
+                ? list.map(menuCard).join('')
+                : '<div class="no-data">Belum ada menu pada kategori ini.</div>'
+            }
+          </div>
+
+        </section>
+      `;
+
+    }).join('');
+
+    // TAMPILAN DASHBOARD
+    document.querySelector('#app').innerHTML = `
+
+      <div class="admin-layout">
+
+        <aside class="admin-side">
+
+          <a class="admin-logo" href="admin.html#dashboard">
+            Makan<span>in</span>
+            <small>RESTAURANT ADMIN</small>
+          </a>
+
+          <button type="button"
+            class="side ${tab === 'dashboard' ? 'active' : ''}"
+            data-tab="dashboard">Dashboard</button>
+
+          <button type="button"
+            class="side ${tab === 'online' ? 'active' : ''}"
+            data-tab="online">Pesanan Online</button>
+
+          <button type="button"
+            class="side ${tab === 'dinein' ? 'active' : ''}"
+            data-tab="dinein">Pesanan Dine-in</button>
+
+          <button type="button"
+            class="side ${tab === 'customers' ? 'active' : ''}"
+            data-tab="customers">Pelanggan</button>
+
+          <button type="button"
+            class="side ${tab === 'menu' ? 'active' : ''}"
+            data-tab="menu">Menu</button>
+
+          <button type="button"
+            class="side ${tab === 'reports' ? 'active' : ''}"
+            data-tab="reports">Laporan</button>
+
+          <div class="admin-side-user">
+            <span>Login sebagai</span>
+            <b>${safe(adminUser.email)}</b>
+          </div>
+
+          <button type="button"
+            class="side logout"
+            id="logout">Keluar</button>
+
+        </aside>
+
+        <main class="admin-main">
+
+          <header class="admin-head">
+            <div>
+              <span class="eyebrow">Manajemen Makanin</span>
+
+              <h1>
+                ${
+                  tab === 'dashboard' ? 'Selamat datang, Admin.'
+                  : tab === 'online' ? 'Pesanan Online'
+                  : tab === 'dinein' ? 'Pesanan Dine-in'
+                  : tab === 'customers' ? 'Data Pelanggan'
+                  : tab === 'menu' ? 'Kelola Menu'
+                  : 'Laporan Penjualan'
+                }
+              </h1>
+
+              <p>
+                Admin mengelola menu, pelanggan, pesanan,
+                pembayaran, dan laporan restoran.
+              </p>
+            </div>
+
+            <span class="admin-pill">Admin</span>
+          </header>
+
+          ${
+            tab === 'dashboard'
+              ? `
+                <section class="admin-panel active-panel">
+
+                  <div class="admin-stats">
+                    <div><small>Total Pesanan</small><b>${orders.length}</b></div>
+                    <div><small>Pesanan Baru</small><b>${pendingOrders}</b></div>
+                    <div><small>Pelanggan</small><b>${users.length}</b></div>
+                    <div><small>Menu</small><b>${foodsNow.length}</b></div>
+                    <div><small>Penjualan Dibayar</small><b>${rupiah(paidRevenue)}</b></div>
+                  </div>
+
+                  <div class="status-overview">
+                    <div><span>Dibuat</span><b>${statusCount('Pesanan sedang dibuat')}</b></div>
+                    <div><span>Diproses</span><b>${statusCount('Sedang diproses')}</b></div>
+                    <div><span>Diantar</span><b>${statusCount('Sedang diantar')}</b></div>
+                    <div><span>Selesai</span><b>${statusCount('Pesanan selesai')}</b></div>
+                  </div>
+
+                  <div class="admin-section">
+                    <div class="admin-section-head">
+                      <h2>Pesanan terbaru</h2>
+
+                      <div class="dashboard-order-links">
+                        <button type="button" class="admin-link"
+                          data-tab="online">Lihat pesanan online</button>
+
+                        <button type="button" class="admin-link"
+                          data-tab="dinein">Lihat pesanan dine-in</button>
+                      </div>
+                    </div>
+
+                    <div class="admin-order-list">
+                      ${
+                        orders.length
+                          ? orders.slice(0, 5).map(orderCard).join('')
+                          : '<div class="no-data">Belum ada pesanan.</div>'
+                      }
+                    </div>
+                  </div>
+
+                </section>
+              `
+              : ''
+          }
+
+          ${tab === 'online'
+            ? orderSection('Pesanan Online', onlineOrders, 'Belum ada pesanan online.')
+            : ''}
+
+          ${tab === 'dinein'
+            ? orderSection('Pesanan Dine-in / Makan di Tempat', dineinOrders, 'Belum ada pesanan dine-in.')
+            : ''}
+
+          ${
+            tab === 'customers'
+              ? `
+                <section class="admin-panel active-panel">
+
+                  <div class="admin-section-head">
+                    <div>
+                      <h2>Data pelanggan</h2>
+                      <p class="admin-help">
+                        Data akun customer yang sudah terdaftar.
+                      </p>
+                    </div>
+
+                    <span>${users.length} pelanggan</span>
+                  </div>
+
+                  <div class="admin-cards customer-admin-grid">
+
+                    ${
+                      users.length
+                        ? users.map(x => {
+                            const n = orders.filter(
+                              o =>
+                                o.customerId === x.id ||
+                                String(o?.customer?.email || '').toLowerCase() ===
+                                String(x.email).toLowerCase()
+                            ).length;
+
+                            return `
+                              <article>
+                                <div class="avatar">
+                                  ${safe((x.name || 'P').charAt(0).toUpperCase())}
+                                </div>
+
+                                <div>
+                                  <h3>${safe(x.name)}</h3>
+                                  <p>Email: <b>${safe(x.email)}</b></p>
+                                  <p>No. HP: <b>${safe(x.phone || 'Belum diisi')}</b></p>
+                                  <p>Alamat: ${safe(x.address || 'Belum diisi')}</p>
+                                  <small>${n} pesanan</small>
+                                </div>
+                              </article>
+                            `;
+                          }).join('')
+                        : '<div class="no-data">Belum ada pelanggan.</div>'
+                    }
+
+                  </div>
+                </section>
+              `
+              : ''
+          }
+
+          ${
+            tab === 'menu'
+              ? `
+                <section class="admin-panel active-panel">
+
+                  <div class="admin-section-head">
+                    <div>
+                      <h2>Manajemen menu</h2>
+                      <p class="admin-help">
+                        Tambah, edit, hapus, atur harga, gambar,
+                        deskripsi, dan stok menu.
+                      </p>
+                    </div>
+
+                    <button type="button"
+                      class="btn primary admin-add-food"
+                      id="addFood">
+                      + Tambah Menu
+                    </button>
+                  </div>
+
+                  ${
+                    catalogError
+                      ? `<div class="no-data">Gagal memuat katalog: ${safe(catalogError)}</div>`
+                      : categories.length
+                        ? menuSections
+                        : '<div class="no-data">Belum ada kategori.</div>'
+                  }
+
+                </section>
+              `
+              : ''
+          }
+
+          ${
+            tab === 'reports'
+              ? `
+                <section class="admin-panel active-panel">
+
+                  <div class="admin-stats">
+                    <div><small>Omzet dibayar</small><b>${rupiah(paidRevenue)}</b></div>
+                    <div><small>Pesanan selesai</small><b>${statusCount('Pesanan selesai')}</b></div>
+                    <div><small>Online</small><b>${onlineOrders.length}</b></div>
+                    <div><small>Dine-in</small><b>${dineinOrders.length}</b></div>
+                  </div>
+
+                  <div class="admin-section">
+                    <div class="admin-section-head">
+                      <h2>Ringkasan penjualan</h2>
+                    </div>
+
+                    <div class="report-table">
+                      <div><span>Total transaksi</span><b>${orders.length}</b></div>
+                      <div><span>Sudah dibayar</span><b>${orders.filter(o => o.paid || o.paymentStatus === 'Sudah Dibayar').length}</b></div>
+                      <div><span>Belum dibayar</span><b>${orders.filter(o => !(o.paid || o.paymentStatus === 'Sudah Dibayar')).length}</b></div>
+                      <div><span>Nilai seluruh pesanan</span><b>${rupiah(orders.reduce((s, o) => s + Number(o.total || 0), 0))}</b></div>
+                    </div>
+                  </div>
+
+                </section>
+              `
+              : ''
+          }
+
+        </main>
+      </div>
+
+      <div id="foodModal"></div>
+    `;
+
+    // NAVIGASI
+    document.querySelectorAll('[data-tab]').forEach(b => {
+      b.addEventListener('click', () => {
+        location.hash = b.dataset.tab;
+      });
+    });
+
+    // LOGOUT
+    document.querySelector('#logout').onclick = async () => {
+
+      const button = document.querySelector('#logout');
+      button.disabled = true;
+
+      try {
+        await sendApi('/api/auth/logout', 'POST');
+        location.href = 'admin-login.html';
+
+      } catch (error) {
+        alert(error.message);
+        button.disabled = false;
+      }
+    };
+
+
+const dbStatus = {
+  'Pesanan sedang dibuat': 'PENDING_CONFIRMATION',
+  'Sedang diproses': 'PROCESSING',
+  'Sedang disiapkan': 'PREPARING',
+  'Sedang diantar': 'OUT_FOR_DELIVERY',
+  'Pesanan selesai': 'COMPLETED',
+  'Dibatalkan': 'CANCELLED'
+};
+
+// UPDATE STATUS PESANAN
+document.querySelectorAll('[data-status-id]').forEach(sel => {
+  sel.addEventListener('change', async () => {
+    const status = dbStatus[sel.value];
+
+    if (!status) {
+      alert('Status tidak valid.');
+      return;
+    }
+
+    sel.disabled = true;
+
+    try {
+      await sendApi('/api/orders', 'PATCH', {
+        id: sel.dataset.statusId,
+        status
+      });
+
+      await render();
+
+    } catch (error) {
+      alert(error.message);
+      await render();
+    }
+  });
+});
+
+// UPDATE PEMBAYARAN
+document.querySelectorAll('[data-paid-id]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+
+    try {
+      await sendApi('/api/orders', 'PATCH', {
+        id: btn.dataset.paidId,
+        paymentStatus: 'PAID',
+        status: 'PROCESSING'
+      });
+
+      await render();
+
+    } catch (error) {
+      alert(error.message);
+      btn.disabled = false;
+    }
+  });
+});
+
+    // TAMBAH MENU
+    document.querySelector('#addFood')?.addEventListener(
+      'click',
+      () => openFoodModal()
+    );
+
+    // EDIT MENU
+    document.querySelectorAll('[data-edit-food]').forEach(btn => {
+      btn.addEventListener('click', () => {
+
+        const food = foodsNow.find(
+          f => String(f.id) === String(btn.dataset.editFood)
+        );
+
+        if (food) openFoodModal(food);
+      });
+    });
+
+    // HAPUS MENU
+    document.querySelectorAll('[data-delete-food]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+
+        const id = btn.dataset.deleteFood;
+
+        const food = foodsNow.find(
+          f => String(f.id) === String(id)
+        );
+
+        if (!food) return;
+
+        if (!confirm(`Hapus menu "${food.name}"?`)) return;
+
+        try {
+
+          await sendApi(
+            `/api/foods/${encodeURIComponent(id)}`,
+            'DELETE'
+          );
+
+          alert('Menu berhasil dihapus.');
+
+          await render();
+
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+    });
+
+  };
+
+  // FORM TAMBAH DAN EDIT MENU
+  const openFoodModal = (food = null) => {
+
+    const isEdit = Boolean(food);
+    const categories = latestCategories;
+
+    if (!categories.length) {
+      alert('Kategori belum tersedia. Tambahkan kategori terlebih dahulu.');
+      return;
+    }
+
+    const categoryOptions = categories.map(cat => `
+      <option
+        value="${safe(cat.id)}"
+        ${Number(food?.categoryId ?? food?.category?.id) === Number(cat.id) ? 'selected' : ''}
+      >
+        ${safe(cat.name)}
+      </option>
+    `).join('');
+
+    document.querySelector('#foodModal').innerHTML = `
+
+      <div class="modal-backdrop">
+
+        <div class="modal admin-food-modal">
+
+          <button type="button"
+            class="modal-close"
+            id="closeFood">×</button>
+
+          <span class="eyebrow">
+            ${isEdit ? 'Edit Menu' : 'Tambah Menu'}
+          </span>
+
+          <h2>
+            ${isEdit ? 'Perbarui' : 'Tambah'} Menu Makanin
+          </h2>
+
+          <form id="foodForm">
+
+            <label>
+              Nama menu
+              <input
+                id="foodName"
+                required
+                value="${safe(food?.name || '')}"
+              >
+            </label>
+
+            <label>
+              Kategori
+              <select id="foodCategory" required>
+                ${categoryOptions}
+              </select>
+            </label>
+
+            <label>
+              Harga (Rupiah)
+              <input
+                id="foodPrice"
+                type="number"
+                min="1"
+                required
+                value="${Number(food?.price || 0)}"
+              >
+            </label>
+
+            <label>
+              Stok
+              <input
+                id="foodStock"
+                type="number"
+                min="0"
+                required
+                value="${Number(food?.stock ?? 20)}"
+              >
+            </label>
+
+            <label>
+              URL Gambar
+              <input
+                id="foodImg"
+                type="url"
+                value="${safe(food?.imageUrl || '')}"
+                placeholder="https://..."
+              >
+            </label>
+
+            <label>
+              Deskripsi
+              <textarea id="foodDesc" rows="3">${safe(food?.description || '')}</textarea>
+            </label>
+
+            <label>
+              <input
+                id="foodAvailable"
+                type="checkbox"
+                ${food ? (food.isAvailable ? 'checked' : '') : 'checked'}
+              >
+              Menu tersedia
+            </label>
+
+            <button type="submit" class="btn primary full">
+              ${isEdit ? 'Simpan Perubahan' : 'Tambah Menu'}
+            </button>
+
+          </form>
+
+        </div>
+      </div>
+    `;
+
+    document.querySelector('#closeFood').onclick = () => {
+      document.querySelector('#foodModal').innerHTML = '';
+    };
+
+    document.querySelector('#foodForm').onsubmit = async e => {
+
+      e.preventDefault();
+
+      const name = document.querySelector('#foodName').value.trim();
+      const categoryId = Number(
+        document.querySelector('#foodCategory').value
+      );
+      const price = Number(
+        document.querySelector('#foodPrice').value
+      );
+      const stock = Number(
+        document.querySelector('#foodStock').value
+      );
+      const imageUrl =
+        document.querySelector('#foodImg').value.trim();
+      const description =
+        document.querySelector('#foodDesc').value.trim();
+      const isAvailable =
+        document.querySelector('#foodAvailable').checked && stock > 0;
+
+      if (!name) {
+        alert('Nama menu wajib diisi.');
+        return;
+      }
+
+      if (!Number.isSafeInteger(price) || price <= 0) {
+        alert('Harga harus lebih dari 0.');
+        return;
+      }
+
+      if (!Number.isSafeInteger(stock) || stock < 0) {
+        alert('Stok tidak boleh negatif.');
+        return;
+      }
+
+      if (!Number.isInteger(categoryId) || categoryId <= 0) {
+        alert('Kategori tidak valid.');
+        return;
+      }
+
+      const data = {
+        name,
+        categoryId,
+        price,
+        stock,
+        imageUrl: imageUrl || null,
+        description: description || null,
+        isAvailable
+      };
+
+      const button = e.target.querySelector('button[type="submit"]');
+      button.disabled = true;
+
+      try {
+
+        await sendApi(
+          isEdit
+            ? `/api/foods/${encodeURIComponent(food.id)}`
+            : '/api/foods',
+          isEdit ? 'PUT' : 'POST',
+          data
+        );
+
+        alert(
+          isEdit
+            ? 'Menu berhasil diperbarui.'
+            : 'Menu berhasil ditambahkan.'
+        );
+
+        document.querySelector('#foodModal').innerHTML = '';
+
+        await render();
+
+      } catch (error) {
+
+        alert(error.message);
+        button.disabled = false;
+
+      }
+    };
+  };
+
+  await render();
+
+  window.onhashchange = render;
 }
 
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
@@ -1019,9 +2906,22 @@ window.addEventListener('storage', e => {
   // Periksa session terlebih dahulu
   await loadCurrentUser();
 
-  // Tentukan halaman yang akan ditampilkan
   const path = location.pathname.split('/').pop() || 'index.html';
+  const role = sessionUser?.role;
 
+  // ADMIN hanya boleh masuk dashboard admin
+  if (role === 'ADMIN' && path !== 'admin.html') {
+    location.replace('admin.html#dashboard');
+    return;
+  }
+
+  // CUSTOMER tidak boleh masuk dashboard admin
+  if (role === 'CUSTOMER' && path === 'admin.html') {
+    location.replace('index.html');
+    return;
+  }
+
+  // Tentukan halaman
   if (path === 'index.html') home();
   else if (path === 'menu.html') menuPage();
   else if (path === 'detail.html') detailPage();
@@ -1029,7 +2929,7 @@ window.addEventListener('storage', e => {
   else if (path === 'login.html') loginPage();
   else if (path === 'profile.html') profilePage();
   else if (path === 'admin-login.html') adminMasukPage();
-  else if (path === 'admin.html') adminPage();
+  else if (path === 'admin.html') await adminPage();
   else if (path === 'cart.html') cartPage();
   else if (path === 'checkout.html') checkoutPage();
   else if (path === 'orders.html') ordersPage();
